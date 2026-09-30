@@ -38,4 +38,22 @@ describe('withDrizzleCompat', () => {
     const client = { execute: jest.fn(), executeSync } as unknown as DB;
     expect(withDrizzleCompat(client).executeSync).toBe(executeSync);
   });
+
+  it('entrega em executeRawAsync só a lista de linhas, sem o objeto do op-sqlite 18', async () => {
+    const rawRows = [['m1', 'Wesley']];
+    const executeRaw = jest.fn(async () => ({
+      rowsAffected: 0,
+      rawRows,
+      columnNames: ['id', 'name'],
+    }));
+    const client = { execute: jest.fn(), executeRaw } as unknown as DB;
+    const compat = withDrizzleCompat(client) as DB & {
+      executeRawAsync: (q: string, p?: unknown[]) => Promise<unknown[][]>;
+    };
+
+    await expect(compat.executeRawAsync('SELECT', [1])).resolves.toEqual(
+      rawRows,
+    );
+    expect(executeRaw).toHaveBeenCalledWith('SELECT', [1]);
+  });
 });

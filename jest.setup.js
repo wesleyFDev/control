@@ -22,6 +22,7 @@ jest.mock('@op-engineering/op-sqlite', () => ({
   open: () => ({
     executeSync: jest.fn(() => ({ rows: [], rowsAffected: 0 })),
     execute: jest.fn(async () => ({ rows: [], rowsAffected: 0 })),
+    executeRaw: jest.fn(async () => []),
     close: jest.fn(),
   }),
 }));

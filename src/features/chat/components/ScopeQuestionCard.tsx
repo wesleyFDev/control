@@ -32,7 +32,7 @@ export default function ScopeQuestionCard({ message, actions }: Props) {
           <ScopeToggle
             variant="question"
             value={draft.scope}
-            disabled={saved}
+            disabled={saved || status === 'saving'}
             onChange={scope => actions.answerScope(id, scope)}
           />
         </View>

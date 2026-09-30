@@ -29,6 +29,7 @@ const QUICK_ACTIONS: Item[] = [
 /** Demais telas, abaixo das ações principais. */
 const MENU_ITEMS: Item[] = [
   { route: 'Reports', label: 'Relatórios', icon: 'pie-chart' },
+  { route: 'Details', label: 'Detalhes', icon: 'list' },
   { route: 'Family', label: 'Família', icon: 'users' },
   { route: 'Profile', label: 'Perfil', icon: 'user' },
   { route: 'Settings', label: 'Configurações', icon: 'settings' },

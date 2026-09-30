@@ -1,6 +1,8 @@
-import { useCallback, useMemo, useReducer } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 
 import { interpretMessage } from '../../../ai/expensePipeline';
+import { createExpense } from '../../../db/repositories/expensesRepository';
+import { getSelfMemberId } from '../../../db/repositories/lookupsRepository';
 import type { ExpenseDraft, ExpenseScope } from '../../expenses/types';
 import { createLocalId } from '../../../utils/id';
 import type { ChatMessage, ExpenseMessage } from '../types';
@@ -16,8 +18,9 @@ type State = { messages: ChatMessage[] };
 type Action =
   | { type: 'send'; text: string; now: Date }
   | { type: 'setScope'; id: string; scope: ExpenseScope }
-  | { type: 'answerScope'; id: string; scope: ExpenseScope }
-  | { type: 'confirm'; id: string }
+  | { type: 'saving'; id: string; scope: ExpenseScope }
+  | { type: 'saved'; id: string }
+  | { type: 'saveFailed'; id: string; reason: string }
   | { type: 'startEdit'; id: string }
   | { type: 'cancelEdit'; id: string }
   | { type: 'saveEdit'; id: string; draft: ExpenseDraft };
@@ -57,6 +60,7 @@ function reducer(state: State, action: Action): State {
               draft,
               status: 'pending',
               askScope: draft.scope === null,
+              sourceText: text,
             }))
           : [
               {
@@ -74,17 +78,35 @@ function reducer(state: State, action: Action): State {
         draft: { ...message.draft, scope: action.scope },
       }));
 
-    case 'answerScope':
+    case 'saving':
       return updateExpense(state, action.id, message => ({
         ...message,
         draft: { ...message.draft, scope: action.scope },
+        status: 'saving',
+      }));
+
+    case 'saved':
+      return updateExpense(state, action.id, message => ({
+        ...message,
         status: 'saved',
       }));
 
-    case 'confirm':
-      return updateExpense(state, action.id, message =>
-        message.draft.scope ? { ...message, status: 'saved' } : message,
-      );
+    case 'saveFailed': {
+      const reverted = updateExpense(state, action.id, message => ({
+        ...message,
+        status: 'pending',
+      }));
+      return {
+        messages: [
+          ...reverted.messages,
+          {
+            kind: 'assistant',
+            id: createLocalId('msg'),
+            text: `Não consegui salvar esse gasto. ${action.reason}`,
+          },
+        ],
+      };
+    }
 
     case 'startEdit':
       return updateExpense(state, action.id, message => ({
@@ -112,41 +134,81 @@ const initialState: State = {
   messages: [{ kind: 'assistant', id: 'greeting', text: GREETING }],
 };
 
+/** Grava o gasto do cartão no banco local. "Meu" vira gasto pessoal seu. */
+async function persist(message: ExpenseMessage, scope: ExpenseScope) {
+  const { draft } = message;
+  const memberId = scope === 'me' ? await getSelfMemberId() : null;
+  if (scope === 'me' && !memberId) {
+    throw new Error('O seu perfil ainda não foi criado no aparelho.');
+  }
+  await createExpense({
+    amountCents: draft.amountCents,
+    categoryId: draft.categoryId,
+    date: draft.date,
+    scope: scope === 'family' ? 'family' : 'personal',
+    memberId,
+    description: null,
+    source: 'chat',
+    rawText: message.sourceText,
+  });
+}
+
+function reasonOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export function useChat() {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const stateRef = useRef(state);
+  // Evita gravar o mesmo cartão duas vezes com toques rápidos seguidos.
+  const savingIds = useRef(new Set<string>());
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   const send = useCallback(
     (text: string) => dispatch({ type: 'send', text, now: new Date() }),
     [],
   );
 
-  const actions = useMemo(
-    () => ({
+  const actions = useMemo(() => {
+    const findPending = (id: string) =>
+      stateRef.current.messages.find(
+        (m): m is ExpenseMessage =>
+          m.kind === 'expense' && m.id === id && m.status === 'pending',
+      );
+
+    const save = async (id: string, scope: ExpenseScope | null) => {
+      const message = findPending(id);
+      if (!message || !scope || savingIds.current.has(id)) {
+        return;
+      }
+      savingIds.current.add(id);
+      dispatch({ type: 'saving', id, scope });
+      try {
+        await persist(message, scope);
+        dispatch({ type: 'saved', id });
+      } catch (error) {
+        dispatch({ type: 'saveFailed', id, reason: reasonOf(error) });
+      } finally {
+        savingIds.current.delete(id);
+      }
+    };
+
+    return {
       setScope: (id: string, scope: ExpenseScope) =>
         dispatch({ type: 'setScope', id, scope }),
-      answerScope: (id: string, scope: ExpenseScope) =>
-        dispatch({ type: 'answerScope', id, scope }),
-      confirm: (id: string) => dispatch({ type: 'confirm', id }),
+      /** Resposta da pergunta "seu ou da família?": já salva o gasto. */
+      answerScope: (id: string, scope: ExpenseScope) => save(id, scope),
+      confirm: (id: string) => save(id, findPending(id)?.draft.scope ?? null),
       startEdit: (id: string) => dispatch({ type: 'startEdit', id }),
       cancelEdit: (id: string) => dispatch({ type: 'cancelEdit', id }),
       saveEdit: (id: string, draft: ExpenseDraft) =>
         dispatch({ type: 'saveEdit', id, draft }),
-    }),
-    [],
-  );
+    };
+  }, []);
 
-  const savedExpenses = useMemo(
-    () =>
-      state.messages
-        .filter(
-          (m): m is ExpenseMessage =>
-            m.kind === 'expense' && m.status === 'saved',
-        )
-        .map(m => m.draft),
-    [state.messages],
-  );
-
-  return { messages: state.messages, savedExpenses, send, actions };
+  return { messages: state.messages, send, actions };
 }
 
 export type ChatActions = ReturnType<typeof useChat>['actions'];

@@ -16,6 +16,7 @@ export type AppDrawerParamList = {
   Chat: undefined;
   NewExpense: undefined;
   Reports: undefined;
+  Details: undefined;
   Family: undefined;
   Profile: undefined;
   Settings: undefined;

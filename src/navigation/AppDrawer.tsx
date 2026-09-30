@@ -5,6 +5,7 @@ import {
 } from '@react-navigation/drawer';
 
 import Chat from '../screens/chat/chat';
+import Details from '../screens/details/details';
 import Family from '../screens/family/family';
 import NewExpense from '../screens/newExpense/newExpense';
 import Profile from '../screens/profile/profile';
@@ -47,6 +48,11 @@ export default function AppDrawer() {
         name="Reports"
         component={Reports}
         options={{ title: 'Relatórios' }}
+      />
+      <Drawer.Screen
+        name="Details"
+        component={Details}
+        options={{ title: 'Detalhes' }}
       />
       <Drawer.Screen
         name="Family"

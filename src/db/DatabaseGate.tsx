@@ -1,16 +1,39 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../theme';
 import { useDatabaseMigrations } from './migrate';
+import { ensureSeedData } from './seed';
 
-/** Só mostra o app depois que as tabelas do banco local estiverem criadas. */
+/**
+ * Só mostra o app depois que as tabelas do banco local estiverem criadas
+ * e os dados iniciais (categorias e o membro "você") estiverem gravados.
+ */
 export default function DatabaseGate({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { success, error } = useDatabaseMigrations();
+  const migrations = useDatabaseMigrations();
+  const [seeded, setSeeded] = useState(false);
+  const [seedError, setSeedError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!migrations.success) {
+      return;
+    }
+    ensureSeedData()
+      .then(() => setSeeded(true))
+      .catch(err => {
+        console.error(
+          '[DatabaseGate] Falha ao gravar os dados iniciais',
+          err instanceof Error ? err.stack : err,
+        );
+        setSeedError(err instanceof Error ? err : new Error(String(err)));
+      });
+  }, [migrations.success]);
+
+  const error = migrations.error ?? seedError;
 
   if (error) {
     return (
@@ -21,7 +44,7 @@ export default function DatabaseGate({
     );
   }
 
-  if (!success) {
+  if (!seeded) {
     return (
       <View style={styles.center}>
         <ActivityIndicator color={colors.primary} />

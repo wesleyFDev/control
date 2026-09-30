@@ -22,6 +22,7 @@ export default function ExpenseConfirmCard({ message, actions }: Props) {
   const { draft, status, id } = message;
   const category = getCategory(draft.categoryId);
   const saved = status === 'saved';
+  const saving = status === 'saving';
 
   if (status === 'editing') {
     return (
@@ -55,7 +56,7 @@ export default function ExpenseConfirmCard({ message, actions }: Props) {
         <Row label="Tipo">
           <ScopeToggle
             value={draft.scope}
-            disabled={saved}
+            disabled={saved || saving}
             onChange={scope => actions.setScope(id, scope)}
           />
         </Row>
@@ -64,19 +65,22 @@ export default function ExpenseConfirmCard({ message, actions }: Props) {
           <View style={cardStyles.actions}>
             <Pressable
               accessibilityRole="button"
-              disabled={!draft.scope}
+              disabled={!draft.scope || saving}
               onPress={() => actions.confirm(id)}
               style={({ pressed }) => [
                 cardStyles.primaryButton,
                 pressed && cardStyles.pressed,
-                !draft.scope && cardStyles.disabled,
+                (!draft.scope || saving) && cardStyles.disabled,
               ]}
             >
               <Feather name="check" size={16} color={colors.onPrimary} />
-              <Text style={cardStyles.primaryButtonText}>Confirmar</Text>
+              <Text style={cardStyles.primaryButtonText}>
+                {saving ? 'Salvando...' : 'Confirmar'}
+              </Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
+              disabled={saving}
               onPress={() => actions.startEdit(id)}
               style={({ pressed }) => [
                 cardStyles.secondaryButton,
