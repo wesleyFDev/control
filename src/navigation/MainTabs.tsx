@@ -29,9 +29,13 @@ export default function MainTabs() {
       <Tab.Screen
         name="Chat"
         component={Chat}
-        options={{ title: 'Chat', tabBarIcon: ChatIcon }}
+        options={{
+          title: 'Chat',
+          tabBarIcon: ChatIcon,
+          headerShown: false,
+          tabBarHideOnKeyboard: true,
+        }}
       />
-     
     </Tab.Navigator>
   );
 }
