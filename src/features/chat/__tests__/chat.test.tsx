@@ -8,7 +8,8 @@ import ReactTestRenderer, {
 import Chat from '../../../screens/chat/chat';
 
 jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({ canGoBack: () => false, goBack: jest.fn() }),
+  DrawerActions: { openDrawer: () => ({ type: 'OPEN_DRAWER' }) },
+  useNavigation: () => ({ dispatch: jest.fn() }),
 }));
 
 function allText(root: ReactTestInstance): string {

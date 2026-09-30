@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@react-native-vector-icons/feather/static';
-import { useNavigation } from '@react-navigation/native';
+import { DrawerActions, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, fonts } from '../../../theme';
@@ -9,21 +9,18 @@ import { colors, fonts } from '../../../theme';
 export default function ChatHeader() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
-  const canGoBack = navigation.canGoBack();
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
-      {canGoBack && (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Voltar"
-          hitSlop={12}
-          onPress={() => navigation.goBack()}
-          style={styles.back}
-        >
-          <Feather name="arrow-left" size={22} color={colors.text} />
-        </Pressable>
-      )}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Abrir menu"
+        hitSlop={12}
+        onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+        style={styles.back}
+      >
+        <Feather name="menu" size={22} color={colors.text} />
+      </Pressable>
       <View>
         <Text style={styles.title}>Assistente</Text>
         <View style={styles.badge}>

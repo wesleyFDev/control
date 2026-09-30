@@ -1,27 +1,43 @@
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { DrawerScreenProps } from '@react-navigation/drawer';
 import type {
   CompositeScreenProps,
   NavigatorScreenParams,
 } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-export type MainTabParamList = {
+/** Telas fora do drawer: só o fluxo de autenticação. */
+export type AuthStackParamList = {
+  Login: undefined;
+  Register: undefined;
+};
+
+/** Telas do app, todas acessíveis pelo drawer. */
+export type AppDrawerParamList = {
   Chat: undefined;
-  Expenses: undefined;
+  NewExpense: undefined;
   Reports: undefined;
-  Members: undefined;
+  Family: undefined;
+  Profile: undefined;
+  Settings: undefined;
 };
 
 export type RootStackParamList = {
-  MainTabs: NavigatorScreenParams<MainTabParamList>;
+  Auth: NavigatorScreenParams<AuthStackParamList>;
+  App: NavigatorScreenParams<AppDrawerParamList>;
 };
 
 export type RootStackScreenProps<T extends keyof RootStackParamList> =
   NativeStackScreenProps<RootStackParamList, T>;
 
-export type MainTabScreenProps<T extends keyof MainTabParamList> =
+export type AuthStackScreenProps<T extends keyof AuthStackParamList> =
   CompositeScreenProps<
-    BottomTabScreenProps<MainTabParamList, T>,
+    NativeStackScreenProps<AuthStackParamList, T>,
+    RootStackScreenProps<keyof RootStackParamList>
+  >;
+
+export type AppDrawerScreenProps<T extends keyof AppDrawerParamList> =
+  CompositeScreenProps<
+    DrawerScreenProps<AppDrawerParamList, T>,
     RootStackScreenProps<keyof RootStackParamList>
   >;
 
