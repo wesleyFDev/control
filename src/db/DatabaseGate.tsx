@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../theme';
 import { useDatabaseMigrations } from './migrate';
+import { refreshCategoryRegistry } from './repositories/categoriesRepository';
 import { ensureSeedData } from './seed';
 
 /**
@@ -23,6 +24,7 @@ export default function DatabaseGate({
       return;
     }
     ensureSeedData()
+      .then(refreshCategoryRegistry)
       .then(() => setSeeded(true))
       .catch(err => {
         console.error(

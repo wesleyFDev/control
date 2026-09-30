@@ -17,6 +17,7 @@ import {
   integer,
   sqliteTable,
   text,
+  uniqueIndex,
 } from 'drizzle-orm/sqlite-core';
 
 const timestamps = {
@@ -52,6 +53,29 @@ export const categories = sqliteTable(
     ...timestamps,
   },
   table => [index('categories_sort_order_idx').on(table.sortOrder)],
+);
+
+/**
+ * Palavras-chave que ligam uma frase do chat a uma categoria.
+ * Guardadas em minúsculas e sem acento, como o categoryMatcher compara.
+ * Uma palavra ativa pertence a uma única categoria.
+ */
+export const categoryKeywords = sqliteTable(
+  'category_keywords',
+  {
+    id: text('id').primaryKey(),
+    categoryId: text('category_id')
+      .notNull()
+      .references(() => categories.id, { onDelete: 'restrict' }),
+    keyword: text('keyword').notNull(),
+    ...timestamps,
+  },
+  table => [
+    index('category_keywords_category_id_idx').on(table.categoryId),
+    uniqueIndex('category_keywords_active_keyword_idx')
+      .on(table.keyword)
+      .where(sql`${table.deletedAt} IS NULL`),
+  ],
 );
 
 export const EXPENSE_SCOPES = ['personal', 'family'] as const;
@@ -99,5 +123,6 @@ export type MemberRow = typeof members.$inferSelect;
 export type NewMemberRow = typeof members.$inferInsert;
 export type CategoryRow = typeof categories.$inferSelect;
 export type NewCategoryRow = typeof categories.$inferInsert;
+export type CategoryKeywordRow = typeof categoryKeywords.$inferSelect;
 export type ExpenseRow = typeof expenses.$inferSelect;
 export type NewExpenseRow = typeof expenses.$inferInsert;

@@ -1,5 +1,5 @@
 import {
-  CATEGORIES,
+  getCategories,
   type CategoryId,
 } from '../../features/expenses/categories';
 import { findWord, normalize } from './normalize';
@@ -9,7 +9,7 @@ export function matchCategory(text: string): CategoryId | null {
   const t = normalize(text);
   let best: { id: CategoryId; index: number } | null = null;
 
-  for (const category of CATEGORIES) {
+  for (const category of getCategories()) {
     for (const keyword of category.keywords) {
       const index = findWord(t, keyword);
       if (index >= 0 && (!best || index < best.index)) {

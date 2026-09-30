@@ -1,6 +1,9 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import Categories from '../screens/categories/categories';
+import CategoryEdit from '../screens/categoryEdit/categoryEdit';
+import { colors } from '../theme';
 import AppDrawer from './AppDrawer';
 import AuthStack from './AuthStack';
 import type { RootStackParamList } from './types';
@@ -19,6 +22,30 @@ export default function RootNavigator() {
     >
       <Stack.Screen name="App" component={AppDrawer} />
       <Stack.Screen name="Auth" component={AuthStack} />
+      <Stack.Group
+        screenOptions={{
+          headerShown: true,
+          headerStyle: { backgroundColor: colors.background },
+          headerShadowVisible: false,
+          headerTintColor: colors.text,
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      >
+        <Stack.Screen
+          name="Categories"
+          component={Categories}
+          options={{ title: 'Categorias' }}
+        />
+        <Stack.Screen
+          name="CategoryEdit"
+          component={CategoryEdit}
+          options={({ route }) => ({
+            title: route.params?.categoryId
+              ? 'Editar categoria'
+              : 'Nova categoria',
+          })}
+        />
+      </Stack.Group>
     </Stack.Navigator>
   );
 }

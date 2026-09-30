@@ -10,7 +10,7 @@ import {
   type ISODate,
 } from '../../../utils/dates';
 import { centsToInput, parseBRLInput } from '../../../utils/money';
-import { CATEGORIES } from '../../expenses/categories';
+import { useCategories } from '../../expenses/hooks/useCategories';
 import type { ExpenseDraft } from '../../expenses/types';
 import { cardStyles } from './cardStyles';
 import ScopeToggle from './ScopeToggle';
@@ -29,6 +29,7 @@ function dateOptions(current: ISODate): ISODate[] {
 
 export default function ExpenseEditForm({ draft, onSave, onCancel }: Props) {
   const [amountText, setAmountText] = useState(centsToInput(draft.amountCents));
+  const categories = useCategories();
   const [categoryId, setCategoryId] = useState(draft.categoryId);
   const [date, setDate] = useState(draft.date);
   const [scope, setScope] = useState(draft.scope);
@@ -66,7 +67,7 @@ export default function ExpenseEditForm({ draft, onSave, onCancel }: Props) {
 
       <Text style={styles.label}>Categoria</Text>
       <View style={styles.chips}>
-        {CATEGORIES.map(category => {
+        {categories.map(category => {
           const selected = category.id === categoryId;
           return (
             <Pressable

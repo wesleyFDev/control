@@ -1,13 +1,7 @@
 import type { FeatherIconName } from '@react-native-vector-icons/feather/static';
 
-export type CategoryId =
-  | 'mercado'
-  | 'restaurantes'
-  | 'transporte'
-  | 'casa'
-  | 'lazer'
-  | 'saude'
-  | 'outros';
+/** Id da categoria no banco. As padrão usam nomes fixos, como "mercado". */
+export type CategoryId = string;
 
 export type Category = {
   id: CategoryId;
@@ -17,7 +11,11 @@ export type Category = {
   keywords: string[];
 };
 
-export const CATEGORIES: Category[] = [
+/**
+ * Categorias padrão. O seed grava estas no banco na primeira abertura.
+ * Depois disso, o app usa o que estiver no banco, pelo registro abaixo.
+ */
+export const DEFAULT_CATEGORIES: Category[] = [
   {
     id: 'mercado',
     label: 'Mercado',
@@ -128,8 +126,39 @@ export const CATEGORIES: Category[] = [
   },
 ];
 
+/** Categoria usada quando nada na frase indica outra. Não pode ser apagada. */
 export const DEFAULT_CATEGORY_ID: CategoryId = 'outros';
 
+/**
+ * Registro em memória das categorias do banco, com as palavras-chave.
+ * O chat e o categoryMatcher leem daqui, de forma síncrona. O registro é
+ * recarregado do banco na abertura do app e depois de cada alteração nas
+ * configurações. Até lá, valem as categorias padrão.
+ */
+let registry: Category[] = DEFAULT_CATEGORIES;
+const listeners = new Set<() => void>();
+
+export function getCategories(): Category[] {
+  return registry;
+}
+
+export function setCategories(categories: Category[]): void {
+  registry = categories.length > 0 ? categories : DEFAULT_CATEGORIES;
+  listeners.forEach(listener => listener());
+}
+
+export function subscribeCategories(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+/** Categoria pelo id. Uma categoria apagada ou desconhecida vira "Outros". */
 export function getCategory(id: CategoryId): Category {
-  return CATEGORIES.find(c => c.id === id) ?? CATEGORIES[CATEGORIES.length - 1];
+  return (
+    registry.find(c => c.id === id) ??
+    registry.find(c => c.id === DEFAULT_CATEGORY_ID) ??
+    DEFAULT_CATEGORIES[DEFAULT_CATEGORIES.length - 1]
+  );
 }

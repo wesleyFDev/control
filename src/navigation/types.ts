@@ -25,6 +25,10 @@ export type AppDrawerParamList = {
 export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
   App: NavigatorScreenParams<AppDrawerParamList>;
+  /** Telas abertas a partir das Configurações, com botão de voltar. */
+  Categories: undefined;
+  /** Sem categoryId, cria uma categoria nova. */
+  CategoryEdit: { categoryId?: string } | undefined;
 };
 
 export type RootStackScreenProps<T extends keyof RootStackParamList> =
