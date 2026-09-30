@@ -31,6 +31,7 @@ export type RootStackParamList = {
   Categories: undefined;
   /** Sem categoryId, cria uma categoria nova. */
   CategoryEdit: { categoryId?: string } | undefined;
+  AiModel: undefined;
 };
 
 export type RootStackScreenProps<T extends keyof RootStackParamList> =

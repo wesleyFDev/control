@@ -134,7 +134,12 @@ Cada fase termina com o app rodando em aparelho físico Android arm64.
    - Quando o LLM é chamado, ele recebe o valor e a data já extraídos, a lista de categorias e a de membros, e completa só o que falta.
 8. Uma mensagem pode ter mais de um gasto, como "45 no mercado e 20 de uber". O schema aceita uma lista, e cada gasto ganha o próprio cartão.
 9. O cartão de confirmação mostra os campos preenchidos, e cada um pode ser tocado para corrigir. Nada é salvo sem confirmação.
-10. Histórico do chat salvo no banco, com o gasto confirmado ligado à mensagem de origem.
+10. **Pendente:** salvar o histórico do chat no banco. Hoje os gastos confirmados já vão para o banco, mas as mensagens ficam só na memória e somem ao fechar o app. O que falta:
+    - Tabela `chat_messages` com `id`, tipo da mensagem (usuário, assistente ou cartão de gasto), texto, situação do cartão (pendente, salvo), dados do rascunho do gasto em JSON e `expense_id` apontando para o gasto confirmado. Mais os campos de controle de sempre: `created_at`, `updated_at` e `deleted_at`.
+    - Gravar cada mensagem ao ser enviada e atualizar o cartão quando ele for confirmado ou editado.
+    - Ao abrir o chat, carregar as mensagens mais recentes, como as últimas 50, e buscar as anteriores ao rolar para cima.
+    - Cartões que ficaram pendentes voltam como pendentes e ainda podem ser confirmados.
+    - Opção de apagar o histórico nas Configurações, sem apagar os gastos.
 11. Testes com Jest usando o mock oficial `llama.rn/jest/mock`. Montar uma lista de pelo menos 50 frases reais de gasto com a resposta esperada e medir a taxa de acerto das regras e do modelo.
 12. **Pronto quando:** "gastei 45 no mercado ontem" vira um gasto confirmado no banco com o celular em modo avião.
 

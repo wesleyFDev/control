@@ -16,7 +16,7 @@ type Item = {
   description: string;
   icon: FeatherIconName;
   /** Tela aberta pelo item. Precisa ser uma rota sem parâmetros. */
-  route: 'Categories';
+  route: 'Categories' | 'AiModel';
 };
 
 type Section = {
@@ -32,6 +32,13 @@ const SECTIONS: Section[] = [
   {
     title: 'Assistente',
     items: [
+      {
+        title: 'Modelo de IA',
+        description:
+          'Baixe, troque ou remova o modelo que entende as frases no chat.',
+        icon: 'cpu',
+        route: 'AiModel',
+      },
       {
         title: 'Categorias e palavras-chave',
         description:

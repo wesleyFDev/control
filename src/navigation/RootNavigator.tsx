@@ -1,6 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import AiModel from '../screens/aiModel/aiModel';
 import Categories from '../screens/categories/categories';
 import CategoryEdit from '../screens/categoryEdit/categoryEdit';
 import { colors } from '../theme';
@@ -44,6 +45,11 @@ export default function RootNavigator() {
               ? 'Editar categoria'
               : 'Nova categoria',
           })}
+        />
+        <Stack.Screen
+          name="AiModel"
+          component={AiModel}
+          options={{ title: 'Modelo de IA' }}
         />
       </Stack.Group>
     </Stack.Navigator>

@@ -31,3 +31,36 @@ jest.mock('drizzle-orm/op-sqlite/migrator', () => ({
   useMigrations: () => ({ success: true }),
   migrate: jest.fn(async () => undefined),
 }));
+
+// llama.rn: mock oficial da biblioteca.
+jest.mock('llama.rn', () => require('llama.rn/jest/mock'));
+
+// react-native-blob-util é nativo. Nos testes, a pasta do modelo começa vazia.
+jest.mock('react-native-blob-util', () => {
+  const files = new Map();
+  const fs = {
+    dirs: { DocumentDir: '/docs', CacheDir: '/cache' },
+    isDir: jest.fn(async () => true),
+    mkdir: jest.fn(async () => undefined),
+    exists: jest.fn(async path => files.has(path)),
+    readFile: jest.fn(async path => files.get(path)),
+    writeFile: jest.fn(async (path, content) => {
+      files.set(path, content);
+    }),
+    unlink: jest.fn(async path => {
+      files.delete(path);
+    }),
+    stat: jest.fn(async () => ({ size: 0 })),
+    hash: jest.fn(async () => ''),
+    mv: jest.fn(async () => true),
+    df: jest.fn(async () => ({ free: 0 })),
+  };
+  return {
+    __esModule: true,
+    default: {
+      fs,
+      android: { getSDCardApplicationDir: jest.fn(async () => '/sdcard/app') },
+      config: jest.fn(() => ({ fetch: jest.fn() })),
+    },
+  };
+});

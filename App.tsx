@@ -4,6 +4,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import DatabaseGate from './src/db/DatabaseGate';
+import ModelGate from './src/features/aiSetup/ModelGate';
 import Navigation from './src/navigation';
 
 export default function App() {
@@ -14,7 +15,9 @@ export default function App() {
       <SafeAreaProvider>
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
         <DatabaseGate>
-          <Navigation />
+          <ModelGate>
+            <Navigation />
+          </ModelGate>
         </DatabaseGate>
       </SafeAreaProvider>
     </GestureHandlerRootView>
