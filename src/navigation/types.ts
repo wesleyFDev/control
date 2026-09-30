@@ -20,6 +20,8 @@ export type AppDrawerParamList = {
   Family: undefined;
   Profile: undefined;
   Settings: undefined;
+  /** Ferramenta temporária. Ver src/features/dbInspector/README.md. */
+  DbInspector: undefined;
 };
 
 export type RootStackParamList = {

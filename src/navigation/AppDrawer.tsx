@@ -4,6 +4,8 @@ import {
   type DrawerContentComponentProps,
 } from '@react-navigation/drawer';
 
+// Ferramenta temporária. Ver src/features/dbInspector/README.md.
+import DbInspectorNavigator from '../features/dbInspector/DbInspectorNavigator';
 import Chat from '../screens/chat/chat';
 import Details from '../screens/details/details';
 import Family from '../screens/family/family';
@@ -68,6 +70,11 @@ export default function AppDrawer() {
         name="Settings"
         component={Settings}
         options={{ title: 'Configurações' }}
+      />
+      <Drawer.Screen
+        name="DbInspector"
+        component={DbInspectorNavigator}
+        options={{ title: 'Banco de dados', headerShown: false }}
       />
     </Drawer.Navigator>
   );

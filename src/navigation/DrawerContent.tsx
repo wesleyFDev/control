@@ -33,6 +33,8 @@ const MENU_ITEMS: Item[] = [
   { route: 'Family', label: 'Família', icon: 'users' },
   { route: 'Profile', label: 'Perfil', icon: 'user' },
   { route: 'Settings', label: 'Configurações', icon: 'settings' },
+  // Ferramenta temporária. Ver src/features/dbInspector/README.md.
+  { route: 'DbInspector', label: 'Banco de dados', icon: 'database' },
 ];
 
 export default function DrawerContent(props: DrawerContentComponentProps) {
