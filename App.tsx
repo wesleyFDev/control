@@ -3,6 +3,7 @@ import { StatusBar, StyleSheet, useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import DatabaseGate from './src/db/DatabaseGate';
 import Navigation from './src/navigation';
 
 export default function App() {
@@ -12,7 +13,9 @@ export default function App() {
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-        <Navigation />
+        <DatabaseGate>
+          <Navigation />
+        </DatabaseGate>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
