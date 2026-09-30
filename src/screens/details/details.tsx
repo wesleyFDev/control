@@ -7,6 +7,9 @@ import {
   View,
 } from 'react-native';
 import { Feather } from '@react-native-vector-icons/feather/static';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { EDGES_WITH_HEADER } from '../../components/safeAreaEdges';
 
 import type { ExpenseListItem } from '../../db/repositories/expensesRepository';
 import ExpenseEditModal from '../../features/expenses/components/ExpenseEditModal';
@@ -71,25 +74,25 @@ export default function Details() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
+      <SafeAreaView style={styles.center} edges={EDGES_WITH_HEADER}>
         <ActivityIndicator color={colors.primary} />
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.center}>
+      <SafeAreaView style={styles.center} edges={EDGES_WITH_HEADER}>
         <Text style={styles.emptyTitle}>
           Não foi possível carregar os gastos.
         </Text>
         <Text style={styles.emptyText}>{error}</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={EDGES_WITH_HEADER}>
       <SectionList
         sections={sections}
         keyExtractor={item => item.id}
@@ -125,7 +128,7 @@ export default function Details() {
         onClose={() => setEditing(null)}
         onSave={save}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 

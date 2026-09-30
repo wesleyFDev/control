@@ -3,7 +3,6 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  View,
   type ListRenderItem,
 } from 'react-native';
 
@@ -14,6 +13,9 @@ import MessageBubble from '../../features/chat/components/MessageBubble';
 import ScopeQuestionCard from '../../features/chat/components/ScopeQuestionCard';
 import { useChat } from '../../features/chat/hooks/useChat';
 import type { ChatMessage } from '../../features/chat/types';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { EDGES_WITHOUT_HEADER } from '../../components/safeAreaEdges';
 import { styles } from './style';
 
 export default function Chat() {
@@ -39,7 +41,7 @@ export default function Chat() {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={EDGES_WITHOUT_HEADER}>
       <ChatHeader />
       <KeyboardAvoidingView
         style={styles.body}
@@ -59,6 +61,6 @@ export default function Chat() {
         />
         <ChatInput onSend={send} />
       </KeyboardAvoidingView>
-    </View>
+    </SafeAreaView>
   );
 }

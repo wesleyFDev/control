@@ -2,16 +2,14 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@react-native-vector-icons/feather/static';
 import { DrawerActions, useNavigation } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, fonts } from '../../../theme';
 
 export default function ChatHeader() {
-  const insets = useSafeAreaInsets();
   const navigation = useNavigation();
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
+    <View style={styles.container}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Abrir menu"
@@ -38,6 +36,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
     paddingHorizontal: 16,
+    paddingTop: 8,
     paddingBottom: 12,
     backgroundColor: colors.background,
     borderBottomWidth: StyleSheet.hairlineWidth,

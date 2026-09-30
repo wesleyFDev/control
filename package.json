@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@op-engineering/op-sqlite": "^18.2.5",
+    "@react-native-community/datetimepicker": "^9.2.1",
     "@react-native-vector-icons/feather": "^13.1.4",
     "@react-native-vector-icons/fontawesome-free-brands": "^1.1.4",
     "@react-native-vector-icons/fontawesome-free-regular": "^1.1.4",

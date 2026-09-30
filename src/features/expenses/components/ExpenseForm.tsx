@@ -1,5 +1,15 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import DateTimePicker, {
+  DateTimePickerAndroid,
+} from '@react-native-community/datetimepicker';
 import {
   Feather,
   type FeatherIconName,
@@ -9,9 +19,11 @@ import { parseDate } from '../../../ai/parsers/dateParser';
 import type { ExpenseChanges } from '../../../db/repositories/expensesRepository';
 import type { CategoryRow, MemberRow } from '../../../db/schema';
 import { colors } from '../../../theme';
+import { isoToBR, maskDateInput } from '../../../utils/dateMask';
 import {
   addDays,
   formatDayLabel,
+  fromISODate,
   toISODate,
   type ISODate,
 } from '../../../utils/dates';
@@ -67,6 +79,8 @@ export default function ExpenseForm({
   const [categoryId, setCategoryId] = useState(initialValues.categoryId);
   const [date, setDate] = useState(initialValues.date);
   const [typedDate, setTypedDate] = useState('');
+  // No iOS o calendário aparece dentro do formulário; no Android, em um diálogo.
+  const [showIosCalendar, setShowIosCalendar] = useState(false);
   const [owner, setOwner] = useState<ExpenseOwner>(initialValues.owner);
   const [description, setDescription] = useState(initialValues.description);
   const [submitted, setSubmitted] = useState(false);
@@ -79,6 +93,25 @@ export default function ExpenseForm({
   const typedDateInvalid = typedDate.length > 0 && typedDateValue === null;
   const finalDate = typedDateValue ?? date;
   const valid = amountValid && categoryId !== null && !typedDateInvalid;
+
+  const pickDate = (picked: Date) => {
+    setTypedDate(isoToBR(toISODate(picked)));
+  };
+
+  const openCalendar = () => {
+    const value = fromISODate(finalDate);
+    const maximumDate = new Date();
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value,
+        mode: 'date',
+        maximumDate,
+        onValueChange: (_event, picked) => pickDate(picked),
+      });
+    } else {
+      setShowIosCalendar(visible => !visible);
+    }
+  };
 
   const submit = async () => {
     setSubmitted(true);
@@ -158,20 +191,42 @@ export default function ExpenseForm({
           />
         ))}
       </View>
-      <TextInput
-        value={typedDate}
-        onChangeText={setTypedDate}
-        placeholder="Outra data: dd/mm ou dd/mm/aaaa"
-        placeholderTextColor={colors.textMuted}
-        keyboardType="numbers-and-punctuation"
-        style={[
-          styles.textInput,
-          styles.dateInput,
-          submitted && typedDateInvalid && styles.fieldError,
-        ]}
-        accessibilityLabel="Outra data"
-        maxLength={10}
-      />
+      <View style={styles.dateRow}>
+        <TextInput
+          value={typedDate}
+          onChangeText={text => setTypedDate(maskDateInput(text))}
+          placeholder="Outra data: dd/mm/aaaa"
+          placeholderTextColor={colors.textMuted}
+          keyboardType="number-pad"
+          style={[
+            styles.textInput,
+            styles.dateInput,
+            submitted && typedDateInvalid && styles.fieldError,
+          ]}
+          accessibilityLabel="Outra data"
+          maxLength={10}
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Abrir calendário"
+          onPress={openCalendar}
+          style={({ pressed }) => [
+            styles.calendarButton,
+            pressed && styles.pressed,
+          ]}
+        >
+          <Feather name="calendar" size={20} color={colors.primary} />
+        </Pressable>
+      </View>
+      {Platform.OS === 'ios' && showIosCalendar && (
+        <DateTimePicker
+          value={fromISODate(finalDate)}
+          mode="date"
+          display="inline"
+          maximumDate={new Date()}
+          onValueChange={(_event, picked) => pickDate(picked)}
+        />
+      )}
       {submitted && typedDateInvalid && (
         <Text style={styles.errorText}>Data inválida. Use dd/mm/aaaa.</Text>
       )}
@@ -310,8 +365,24 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.text,
   },
-  dateInput: {
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     marginTop: 8,
+  },
+  dateInput: {
+    flex: 1,
+  },
+  calendarButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
   errorText: {
     marginTop: 6,

@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { Feather } from '@react-native-vector-icons/feather/static';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type {
   ExpenseChanges,
@@ -45,7 +46,8 @@ export default function ExpenseEditModal({
         style={styles.backdrop}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.sheet}>
+        {/* O Modal fica fora da árvore de telas: protege a borda de baixo aqui. */}
+        <SafeAreaView style={styles.sheet} edges={['bottom']}>
           <View style={styles.header}>
             <Text style={styles.title}>Editar gasto</Text>
             <Pressable
@@ -83,7 +85,7 @@ export default function ExpenseEditModal({
               />
             )}
           </ScrollView>
-        </View>
+        </SafeAreaView>
       </KeyboardAvoidingView>
     </Modal>
   );

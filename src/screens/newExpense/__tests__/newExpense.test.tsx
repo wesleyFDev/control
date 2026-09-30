@@ -1,5 +1,6 @@
 import React from 'react';
-import { Text, TextInput } from 'react-native';
+import { Platform, Text, TextInput } from 'react-native';
+import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import ReactTestRenderer, {
   type ReactTestInstance,
   type ReactTestRenderer as Renderer,
@@ -116,7 +117,13 @@ describe('Digitar gasto', () => {
     await type(renderer.root, 'Valor em reais', '120');
     await press(renderer.root, 'Transporte');
     await press(renderer.root, 'Família');
-    await type(renderer.root, 'Outra data', '05/09/2026');
+    await type(renderer.root, 'Outra data', '05092026');
+    const dateInput = renderer.root.find(
+      node =>
+        node.type === TextInput &&
+        node.props.accessibilityLabel === 'Outra data',
+    );
+    expect(dateInput.props.value).toBe('05/09/2026');
     await press(renderer.root, 'Salvar gasto');
 
     expect(mockCreateExpense).toHaveBeenCalledWith(
@@ -138,5 +145,70 @@ describe('Digitar gasto', () => {
 
     expect(allText(renderer.root)).toContain('Data inválida');
     expect(mockCreateExpense).not.toHaveBeenCalled();
+  });
+
+  it('abre o calendário e usa a data escolhida', async () => {
+    const renderer = await renderScreen();
+    await type(renderer.root, 'Valor em reais', '30');
+    await press(renderer.root, 'Mercado');
+
+    const calendarButton = renderer.root.find(
+      node =>
+        node.props.accessibilityLabel === 'Abrir calendário' &&
+        typeof node.props.onPress === 'function',
+    );
+    await ReactTestRenderer.act(async () => calendarButton.props.onPress());
+
+    const picker = renderer.root.find(
+      node =>
+        typeof node.props.onValueChange === 'function' &&
+        node.props.mode === 'date',
+    );
+    await ReactTestRenderer.act(async () =>
+      picker.props.onValueChange({}, new Date(2026, 8, 12)),
+    );
+    await press(renderer.root, 'Salvar gasto');
+
+    expect(mockCreateExpense).toHaveBeenCalledWith(
+      expect.objectContaining({ date: '2026-09-12' }),
+    );
+  });
+
+  it('no Android, abre o diálogo nativo de data', async () => {
+    const originalOS = Platform.OS;
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+    const open = jest
+      .spyOn(DateTimePickerAndroid, 'open')
+      .mockImplementation(params =>
+        params.onValueChange?.({} as never, new Date(2026, 8, 3)),
+      );
+    try {
+      const renderer = await renderScreen();
+      await type(renderer.root, 'Valor em reais', '30');
+      await press(renderer.root, 'Mercado');
+      const calendarButton = renderer.root.find(
+        node =>
+          node.props.accessibilityLabel === 'Abrir calendário' &&
+          typeof node.props.onPress === 'function',
+      );
+      await ReactTestRenderer.act(async () => calendarButton.props.onPress());
+      await press(renderer.root, 'Salvar gasto');
+
+      expect(open).toHaveBeenCalledWith(
+        expect.objectContaining({ mode: 'date' }),
+      );
+      expect(mockCreateExpense).toHaveBeenCalledWith(
+        expect.objectContaining({ date: '2026-09-03' }),
+      );
+    } finally {
+      open.mockRestore();
+      Object.defineProperty(Platform, 'OS', {
+        value: originalOS,
+        configurable: true,
+      });
+    }
   });
 });
