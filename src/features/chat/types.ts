@@ -5,6 +5,8 @@ export type ExpenseCardStatus = 'pending' | 'editing' | 'saving' | 'saved';
 export type ChatMessage =
   | { kind: 'user'; id: string; text: string }
   | { kind: 'assistant'; id: string; text: string }
+  /** Indicador mostrado enquanto a IA analisa a mensagem. */
+  | { kind: 'typing'; id: string }
   | {
       kind: 'expense';
       id: string;

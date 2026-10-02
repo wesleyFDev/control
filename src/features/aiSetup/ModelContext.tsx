@@ -21,6 +21,11 @@ export function ModelProvider({
   );
 }
 
+/** Igual ao useModelStatus, mas devolve null fora do ModelGate (testes, por exemplo). */
+export function useOptionalModelStatus(): ModelContextValue | null {
+  return useContext(ModelContext);
+}
+
 /** Situação do modelo de IA, para qualquer tela saber se ele está pronto. */
 export function useModelStatus(): ModelContextValue {
   const value = useContext(ModelContext);

@@ -40,10 +40,12 @@ export function interpretMessage(
       continue;
     }
     const date = parseDate(part, now);
+    const matched = matchCategory(part);
     drafts.push({
       id: createLocalId('draft'),
       amountCents: amount.cents,
-      categoryId: matchCategory(part) ?? DEFAULT_CATEGORY_ID,
+      categoryId: matched ?? DEFAULT_CATEGORY_ID,
+      categorySource: matched ? 'keyword' : 'default',
       date: date.found ? date.date : wholeDate.date,
       scope: parseScope(part) ?? wholeScope,
       description: part,

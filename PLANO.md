@@ -152,6 +152,41 @@ Escolha do modelo: um modelo instruct pequeno em GGUF com quantização Q4_0. Q4
 
 Se o de 0,5B acertar o suficiente junto com as regras, ele vira o padrão.
 
+Resultado dos testes: com 15 frases, o 0,5B acertou a categoria em 3 e o 1,5B em 12. O 1,5B virou o padrão. No celular sem GPU compatível, a primeira frase leva cerca de 10 s e as seguintes de 1 a 3 s, porque o prompt fixo é reaproveitado.
+
+### Fase 2b — Chat que entende outros pedidos (pendente)
+
+O chat deixa de servir só para registrar gastos e passa a reconhecer outros pedidos. A IA só identifica a intenção. Quem executa e responde é o app, com consultas ao banco e textos fixos. O modelo nunca calcula números nem escreve a resposta, porque nos testes ele inventou gastos para "qual o total do mês?".
+
+Como funciona:
+1. **Intenção:** a mensagem é classificada numa lista fechada de ações, com JSON Schema e `enum`, como já é feito com a categoria. Palavras óbvias, como "quanto" e "total", são resolvidas pelas regras sem chamar a IA.
+2. **Parâmetros:** período, categoria e valor saem das regras existentes, como o `dateParser` e o `categoryMatcher`. A IA entra só no que as regras não resolverem.
+3. **Execução:** cada intenção chama código comum, como uma soma no SQLite.
+4. **Resposta:** texto montado pelo app, como "Em setembro vocês gastaram R$ 1.240,00 em Mercado."
+
+Intenções previstas:
+
+| Mensagem de exemplo | Intenção | O app faz |
+|---|---|---|
+| "gastei 45 no mercado" | registrar gasto | O fluxo atual |
+| "quanto gastei esse mês?" | total do período | Soma os gastos do período |
+| "quanto foi de mercado em setembro?" | gastos por categoria | Filtra categoria e período |
+| "apaga o último" | apagar gasto | Mostra o gasto e pede confirmação |
+| "coloca ração em mercado" | criar palavra-chave | Adiciona a palavra à categoria |
+| "abre os relatórios" | navegar | Abre a tela |
+
+Ordem de implementação:
+1. Total do período e gastos por categoria. Elas só leem dados, então um erro de interpretação não estraga nada.
+2. Navegar para telas.
+3. Apagar e corrigir gastos, sempre com confirmação.
+4. Criar categorias e palavras-chave.
+
+Regras:
+- Só funciona com o modelo de 1,5B. O 0,5B continua só com as regras.
+- No máximo umas 8 a 10 intenções. Acima disso, a precisão cai.
+- Toda ação que altera dados pede confirmação antes.
+- Uma bateria de frases de teste por intenção, medindo a taxa de acerto, como foi feito com as categorias.
+
 ### Fase 3 — Backup em arquivo
 Sem nuvem, desinstalar o app ou perder o celular apaga os gastos. O backup em arquivo resolve isso sem internet.
 
@@ -238,6 +273,51 @@ Passos:
 4. Login, criação de família e convite de membros.
 5. Tabela de fila de sync no banco local. `syncEngine.ts` envia a fila e puxa alterações por `updated_at`. Em conflito, vence a última escrita.
 6. `syncTriggers.ts` dispara sync ao abrir o app, ao voltar para o primeiro plano e ao reconectar.
+
+### Importação bancária com a Pluggy (fora da primeira versão)
+
+A Pluggy é um agregador de Open Finance no Brasil. Com a autorização do usuário, ela conecta contas e cartões de banco e devolve as transações. Assim os gastos do cartão e do Pix entram no app sem digitar.
+
+Essa parte depende de internet e de um backend. Por isso ela só entra junto ou depois da sincronização com o Supabase. O resto do app continua funcionando offline: as transações importadas ficam no SQLite como qualquer outro gasto.
+
+Arquitetura:
+- **Credenciais só no servidor:** o `clientId` e o `clientSecret` da Pluggy nunca vão para o app. Uma Edge Function do Supabase gera o token de conexão de curta duração e o entrega ao app.
+- **Conexão do banco:** o app abre o widget Pluggy Connect, onde o usuário escolhe o banco e autoriza. Conferir na documentação da Pluggy qual é o SDK atual para React Native, ou se o caminho é abrir o widget numa WebView.
+- **Recebimento das transações:** a Pluggy avisa por webhook quando há dados novos. O webhook cai numa Edge Function, que busca as transações na API da Pluggy e grava numa tabela do Supabase. O app recebe essas linhas pelo sync.
+- **Sem duplicar:** cada gasto importado guarda o id da transação na Pluggy. Uma transação que chega de novo atualiza o gasto existente em vez de criar outro.
+
+No app:
+1. **Origem nova:** gastos com `source = 'bank'`, o id da transação na Pluggy e a conta de origem. Exige uma migration nova, porque hoje a origem aceita só `chat` e `manual`.
+2. **Categoria:** a Pluggy já devolve uma categoria para cada transação. Uma tabela de equivalência leva essas categorias para as do app. A descrição da transação, como "PAG*IFOOD", também passa pelas palavras-chave. A IA entra como reserva.
+3. **Fila de revisão:** as transações importadas chegam como pendentes, numa tela própria. O usuário confirma, corrige a categoria, marca como "Meu" ou "Família", ou ignora, por exemplo uma transferência entre contas próprias.
+4. **Só saídas:** entradas de dinheiro, estornos e pagamento da fatura do cartão não viram gastos. A fatura em si duplicaria as compras que já vieram do cartão.
+
+Cuidados:
+- **Custo:** a Pluggy é um serviço pago, cobrado por conexão ativa. Conferir os planos e o período de teste antes de começar.
+- **Dados sensíveis:** dados bancários entram na LGPD. A política de privacidade precisa explicar o uso, o usuário precisa poder desconectar o banco e apagar os dados importados, e o RLS do Supabase precisa restringir as transações à família dona da conta.
+- **Consentimento com prazo:** no Open Finance, a autorização expira e precisa ser renovada. O app avisa quando uma conexão parar de atualizar.
+- **Uso pessoal:** para um app só seu, conferir se a Pluggy atende pessoa física ou exige empresa, e quais são as regras de homologação para produção.
+
+### Foto de nota fiscal (fora da primeira versão)
+
+O usuário fotografa a nota ou escolhe uma imagem, e o app monta o gasto. A leitura é feita pelo ML Kit, que reconhece texto no próprio aparelho e funciona offline. Os modelos de visão do llama.rn ficaram de fora: no celular sem GPU compatível, eles levariam dezenas de segundos por foto e erram bastante os números de nota fiscal.
+
+Fluxo:
+1. **Foto:** um botão no chat abre a câmera ou a galeria, com o `react-native-image-picker`. O `react-native-vision-camera` é a alternativa, se for preciso uma câmera própria no app.
+2. **Leitura:** o `@react-native-ml-kit/text-recognition` recebe o caminho da imagem e devolve o texto, em blocos e linhas.
+3. **Interpretação, com regras novas para nota fiscal:**
+   - **Valor:** a linha com "TOTAL" ou "VALOR A PAGAR", e não o primeiro número da nota.
+   - **Data:** o formato dd/mm/aaaa, que o `dateParser` já entende.
+   - **Categoria:** o nome do estabelecimento no topo da nota, como "Supermercado" ou "Drogaria", passando pelas palavras-chave. A IA entra como reserva, como no chat.
+4. **Confirmação:** o mesmo cartão do chat, com a opção de corrigir antes de salvar. Na tabela de gastos, a origem fica registrada como foto.
+
+Antes de instalar:
+- **Versão embutida do ML Kit no Android:** o modelo de leitura vai dentro do app, com alguns MB a mais, e funciona sem internet desde o início. A versão que usa o Google Play Services baixa o modelo no primeiro uso e não serve para o objetivo offline.
+- **Compatibilidade:** conferir no repositório de cada pacote o suporte à Nova Arquitetura e ao React Native 0.87.
+- **Permissões:** a câmera precisa de permissão no AndroidManifest e no Info.plist. A escolha de foto da galeria usa o seletor do sistema e dispensa permissão nas versões recentes do Android.
+- **Build:** as bibliotecas são nativas e exigem recompilar o app.
+
+Limitações esperadas: nota impressa nítida e bem iluminada costuma ser lida bem. Papel amassado, foto torta ou impressão térmica apagada derrubam a precisão. Por isso o cartão de confirmação é obrigatório.
 
 ### Voz (fora da primeira versão)
 

@@ -22,7 +22,7 @@ export const MODELS: ModelInfo[] = [
     id: 'qwen2.5-0.5b-instruct-q4_0',
     label: 'Leve',
     description:
-      'Qwen 2.5 com 0,5 bilhão de parâmetros. Mais rápido e usa menos memória. Recomendado para começar.',
+      'Qwen 2.5 com 0,5 bilhão de parâmetros. Mais rápido e usa menos memória, mas erra bastante as categorias.',
     fileName: 'qwen2.5-0.5b-instruct-q4_0.gguf',
     url: 'https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/9217f5db79a29953eb74d5343926648285ec7e67/qwen2.5-0.5b-instruct-q4_0.gguf',
     sizeBytes: 428730208,
@@ -33,7 +33,7 @@ export const MODELS: ModelInfo[] = [
     id: 'qwen2.5-1.5b-instruct-q4_0',
     label: 'Mais preciso',
     description:
-      'Qwen 2.5 com 1,5 bilhão de parâmetros. Entende melhor frases difíceis, mas é mais lento e precisa de mais memória.',
+      'Qwen 2.5 com 1,5 bilhão de parâmetros. Acerta bem mais as categorias. Recomendado, se o celular tiver memória.',
     fileName: 'qwen2.5-1.5b-instruct-q4_0.gguf',
     url: 'https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/91cad51170dc346986eccefdc2dd33a9da36ead9/qwen2.5-1.5b-instruct-q4_0.gguf',
     sizeBytes: 1066227232,
@@ -42,7 +42,11 @@ export const MODELS: ModelInfo[] = [
   },
 ];
 
-export const DEFAULT_MODEL_ID = MODELS[0].id;
+/**
+ * Padrão: o de 1,5B. Em testes com 15 frases, ele acertou a categoria em 12,
+ * e o de 0,5B em 3.
+ */
+export const DEFAULT_MODEL_ID = MODELS[1].id;
 
 export function getModel(id: string): ModelInfo | undefined {
   return MODELS.find(model => model.id === id);

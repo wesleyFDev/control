@@ -48,6 +48,9 @@ export default function ExpenseConfirmCard({ message, actions }: Props) {
           <View style={styles.category}>
             <Feather name={category.icon} size={14} color={colors.text} />
             <Text style={styles.value}>{category.label}</Text>
+            {draft.categorySource === 'ai' && (
+              <Text style={styles.aiHint}>sugestão da IA</Text>
+            )}
           </View>
         </Row>
         <Row label="Data">
@@ -132,6 +135,10 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: colors.text,
+  },
+  aiHint: {
+    fontSize: 11,
+    color: colors.textMuted,
   },
   category: {
     flexDirection: 'row',

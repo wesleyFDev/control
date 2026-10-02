@@ -4,9 +4,12 @@ import { Feather } from '@react-native-vector-icons/feather/static';
 import { DrawerActions, useNavigation } from '@react-navigation/native';
 
 import { colors, fonts } from '../../../theme';
+import { useOptionalModelStatus } from '../../aiSetup/ModelContext';
 
 export default function ChatHeader() {
   const navigation = useNavigation();
+  const model = useOptionalModelStatus();
+  const aiReady = model?.status.state === 'ready';
 
   return (
     <View style={styles.container}>
@@ -23,7 +26,11 @@ export default function ChatHeader() {
         <Text style={styles.title}>Assistente</Text>
         <View style={styles.badge}>
           <Feather name="shield" size={11} color={colors.primary} />
-          <Text style={styles.badgeText}>IA local · funciona offline</Text>
+          <Text style={styles.badgeText}>
+            {aiReady
+              ? 'IA local · funciona offline'
+              : 'Sem modelo de IA · só regras'}
+          </Text>
         </View>
       </View>
     </View>
