@@ -79,7 +79,8 @@ export const categoryKeywords = sqliteTable(
 );
 
 export const EXPENSE_SCOPES = ['personal', 'family'] as const;
-export const EXPENSE_SOURCES = ['chat', 'manual'] as const;
+/** installment: parcela de cartão ou boleto paga. */
+export const EXPENSE_SOURCES = ['chat', 'manual', 'installment'] as const;
 
 /**
  * Gastos.

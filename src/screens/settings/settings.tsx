@@ -16,7 +16,7 @@ type Item = {
   description: string;
   icon: FeatherIconName;
   /** Tela aberta pelo item. Precisa ser uma rota sem parâmetros. */
-  route: 'Categories' | 'AiModel';
+  route: 'Categories' | 'AiModel' | 'Pluggy' | 'BankNotifications';
 };
 
 type Section = {
@@ -45,6 +45,25 @@ const SECTIONS: Section[] = [
           'Crie categorias e ensine quais palavras levam a cada uma no chat.',
         icon: 'layers',
         route: 'Categories',
+      },
+    ],
+  },
+  {
+    title: 'Integrações',
+    items: [
+      {
+        title: 'Pluggy',
+        description:
+          'Teste a conexão com as suas contas pelo Meu Pluggy. Por enquanto nada é importado.',
+        icon: 'link',
+        route: 'Pluggy',
+      },
+      {
+        title: 'Notificações do banco',
+        description:
+          'No Android, lê as notificações de compra dos apps de banco na hora em que elas chegam.',
+        icon: 'bell',
+        route: 'BankNotifications',
       },
     ],
   },

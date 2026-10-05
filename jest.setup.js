@@ -64,3 +64,22 @@ jest.mock('react-native-blob-util', () => {
     },
   };
 });
+
+// react-native-keychain é nativo. Nos testes, guarda as credenciais em memória.
+jest.mock('react-native-keychain', () => {
+  const store = new Map();
+  return {
+    setGenericPassword: jest.fn(async (username, password, options) => {
+      store.set(options?.service ?? 'default', { username, password });
+      return { service: options?.service, storage: 'memory' };
+    }),
+    getGenericPassword: jest.fn(async options => {
+      const saved = store.get(options?.service ?? 'default');
+      return saved ? { ...saved, service: options?.service } : false;
+    }),
+    resetGenericPassword: jest.fn(async options => {
+      store.delete(options?.service ?? 'default');
+      return true;
+    }),
+  };
+});

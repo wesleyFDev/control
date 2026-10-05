@@ -17,6 +17,7 @@ export type AppDrawerParamList = {
   NewExpense: undefined;
   Reports: undefined;
   Details: undefined;
+  Bills: undefined;
   Family: undefined;
   Profile: undefined;
   Settings: undefined;
@@ -32,6 +33,13 @@ export type RootStackParamList = {
   /** Sem categoryId, cria uma categoria nova. */
   CategoryEdit: { categoryId?: string } | undefined;
   AiModel: undefined;
+  Pluggy: undefined;
+  BankNotifications: undefined;
+  /** Sem cardId, cria um cartão novo. */
+  CardForm: { cardId?: string } | undefined;
+  PayableForm: { kind?: 'card' | 'boleto'; cardId?: string } | undefined;
+  /** Fatura de um cartão num mês (AAAA-MM). */
+  Invoice: { cardId: string; month: string };
 };
 
 export type RootStackScreenProps<T extends keyof RootStackParamList> =

@@ -1,0 +1,256 @@
+import { StyleSheet } from 'react-native';
+
+import { colors, fonts } from '../../theme';
+
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  body: {
+    flex: 1,
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 40,
+    gap: 4,
+  },
+  notice: {
+    flexDirection: 'row',
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: colors.primarySoft,
+    marginBottom: 8,
+  },
+  noticeText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.primary,
+  },
+  label: {
+    fontSize: 13,
+    color: colors.textMuted,
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  input: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    fontSize: 14,
+    color: colors.text,
+  },
+  multiline: {
+    minHeight: 90,
+    textAlignVertical: 'top',
+  },
+  hint: {
+    marginTop: 6,
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.textMuted,
+  },
+  error: {
+    marginTop: 10,
+    fontSize: 13,
+    color: colors.me,
+  },
+  primaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 20,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+  },
+  primaryButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.onPrimary,
+  },
+  card: {
+    marginTop: 16,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    gap: 8,
+  },
+  cardTitle: {
+    fontFamily: fonts.serif,
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  account: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  accountText: {
+    flex: 1,
+  },
+  accountName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  accountMeta: {
+    fontSize: 12,
+    color: colors.textMuted,
+  },
+  accountBalance: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  loading: {
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 16,
+  },
+  previewContainer: {
+    gap: 8,
+  },
+  back: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+  },
+  backText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  transaction: {
+    flexDirection: 'row',
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  transactionText: {
+    flex: 1,
+    gap: 2,
+  },
+  transactionDescription: {
+    fontSize: 14,
+    color: colors.text,
+  },
+  transactionAmount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  verdict: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  verdictYes: {
+    color: colors.primary,
+  },
+  verdictNo: {
+    color: colors.textMuted,
+  },
+  sectionTitle: {
+    marginTop: 20,
+    marginBottom: 8,
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  inputSpacing: {
+    marginTop: 8,
+  },
+  secondaryButton: {
+    alignItems: 'center',
+    marginTop: 12,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  secondaryButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  linkButton: {
+    alignSelf: 'flex-start',
+    paddingVertical: 4,
+  },
+  dangerText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.me,
+  },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    marginBottom: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  itemId: {
+    fontSize: 13,
+    fontFamily: 'monospace',
+    color: colors.text,
+  },
+  addRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  addInput: {
+    flex: 1,
+  },
+  iconButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  accountCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    marginBottom: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  pressed: {
+    opacity: 0.7,
+  },
+  disabled: {
+    opacity: 0.5,
+  },
+});

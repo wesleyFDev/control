@@ -28,7 +28,7 @@ export type ExpenseChanges = {
 };
 
 export type NewExpense = ExpenseChanges & {
-  source: 'chat' | 'manual';
+  source: 'chat' | 'manual' | 'installment';
   /** Frase original do chat. */
   rawText: string | null;
 };

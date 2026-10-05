@@ -2,7 +2,12 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import AiModel from '../screens/aiModel/aiModel';
+import BankNotificationsScreen from '../screens/bankNotifications/bankNotifications';
+import CardForm from '../screens/bills/cardForm';
+import InvoiceScreen from '../screens/bills/invoice';
+import PayableForm from '../screens/bills/payableForm';
 import Categories from '../screens/categories/categories';
+import PluggyIntegration from '../screens/pluggy/pluggy';
 import CategoryEdit from '../screens/categoryEdit/categoryEdit';
 import { colors } from '../theme';
 import AppDrawer from './AppDrawer';
@@ -50,6 +55,36 @@ export default function RootNavigator() {
           name="AiModel"
           component={AiModel}
           options={{ title: 'Modelo de IA' }}
+        />
+        <Stack.Screen
+          name="Pluggy"
+          component={PluggyIntegration}
+          options={{ title: 'Pluggy' }}
+        />
+        <Stack.Screen
+          name="BankNotifications"
+          component={BankNotificationsScreen}
+          options={{ title: 'Notificações do banco' }}
+        />
+        <Stack.Screen
+          name="CardForm"
+          component={CardForm}
+          options={({ route }) => ({
+            title: route.params?.cardId ? 'Editar cartão' : 'Novo cartão',
+          })}
+        />
+        <Stack.Screen
+          name="PayableForm"
+          component={PayableForm}
+          options={({ route }) => ({
+            title:
+              route.params?.kind === 'boleto' ? 'Novo boleto' : 'Nova compra',
+          })}
+        />
+        <Stack.Screen
+          name="Invoice"
+          component={InvoiceScreen}
+          options={{ title: 'Fatura' }}
         />
       </Stack.Group>
     </Stack.Navigator>

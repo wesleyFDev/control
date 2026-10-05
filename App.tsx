@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import DatabaseGate from './src/db/DatabaseGate';
 import ModelGate from './src/features/aiSetup/ModelGate';
+import NotificationsIngestor from './src/integrations/notifications/NotificationsIngestor';
 import Navigation from './src/navigation';
 
 export default function App() {
@@ -16,6 +17,7 @@ export default function App() {
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
         <DatabaseGate>
           <ModelGate>
+            <NotificationsIngestor />
             <Navigation />
           </ModelGate>
         </DatabaseGate>
