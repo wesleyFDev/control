@@ -1,54 +1,22 @@
 /**
- * Cliente mínimo da API da Pluggy para uso pessoal com o Meu Pluggy.
+ * Cliente mínimo da API da Pluggy para o Meu Pluggy (uso pessoal).
  * Referência: https://docs.pluggy.ai/en/docs/guides/meu-pluggy-personal-use
  *
- * Fluxo:
- * 1. POST /auth troca Client ID e Client Secret por uma API key, válida por 2 horas.
- * 2. GET /accounts?itemId= lista as contas de uma conexão. No Meu Pluggy, o
- *    itemId é copiado do Dashboard, porque GET /v2/items não está disponível.
- * 3. GET /transactions?accountId= lista as transações, em páginas de até 500.
- *
- * Itens do Meu Pluggy são atualizados a cada 24 horas e não aceitam
- * atualização manual.
+ * 1. POST /auth troca Client ID e Client Secret por uma API key (2 horas).
+ * 2. GET /items/{id} traz o nome do banco e quando ele atualizou os dados.
+ * 3. GET /accounts?itemId= lista as contas e os cartões.
+ * 4. GET /transactions?accountId= lista as transações, em páginas de até 500.
  */
+import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
+
+import { decrypt } from './crypto.ts';
+import { HttpError } from './http.ts';
 
 const BASE_URL = 'https://api.pluggy.ai';
 
-export type PluggyAccount = {
-  id: string;
-  itemId: string;
-  name: string;
-  marketingName?: string | null;
-  type: 'BANK' | 'CREDIT' | string;
-  subtype: string;
-  number: string;
-  balance: number;
-  currencyCode: string;
-};
+export type PluggyCredentials = { clientId: string; clientSecret: string };
 
-export type PluggyTransaction = {
-  id: string;
-  accountId: string;
-  date: string;
-  description: string;
-  amount: number;
-  currencyCode: string;
-  type: 'DEBIT' | 'CREDIT';
-  status: 'PENDING' | 'POSTED';
-  category?: string | null;
-  operationType?: string | null;
-  creditCardMetadata?: {
-    installmentNumber?: number;
-    totalInstallments?: number;
-  } | null;
-};
-
-type Page<T> = {
-  total: number;
-  totalPages: number;
-  page: number;
-  results: T[];
-};
+type Page<T> = { totalPages?: number; results?: T[] };
 
 export class PluggyError extends Error {
   constructor(message: string, public status?: number) {
@@ -72,17 +40,14 @@ async function request<T>(
       },
     });
   } catch {
-    throw new PluggyError(
-      'Sem conexão com a internet ou a Pluggy não respondeu.',
-    );
+    throw new PluggyError('A Pluggy não respondeu.');
   }
-
   const body = await response.json().catch(() => null);
   if (!response.ok) {
     const detail =
-      (body && typeof body === 'object' && 'message' in body
+      body && typeof body === 'object' && 'message' in body
         ? String(body.message)
-        : null) ?? response.statusText;
+        : response.statusText;
     if (response.status === 401 || response.status === 403) {
       throw new PluggyError(
         `A Pluggy recusou o acesso (${response.status}). Confira o Client ID, o Client Secret e se o item está vinculado à aplicação. ${detail}`,
@@ -103,11 +68,11 @@ async function request<T>(
   return body as T;
 }
 
-export async function createApiKey(
-  clientId: string,
-  clientSecret: string,
-): Promise<string> {
-  const body = await request<{ apiKey: string }>('/auth', {
+export async function createApiKey({
+  clientId,
+  clientSecret,
+}: PluggyCredentials): Promise<string> {
+  const body = await request<{ apiKey?: string }>('/auth', {
     method: 'POST',
     body: JSON.stringify({ clientId, clientSecret }),
   });
@@ -117,25 +82,37 @@ export async function createApiKey(
   return body.apiKey;
 }
 
+export type PluggyItem = {
+  id: string;
+  connector?: { name?: string | null } | null;
+  lastUpdatedAt?: string | null;
+};
+
+export function getItem(apiKey: string, itemId: string): Promise<PluggyItem> {
+  return request<PluggyItem>(`/items/${encodeURIComponent(itemId)}`, {
+    apiKey,
+  });
+}
+
 export async function listAccounts(
   apiKey: string,
   itemId: string,
-): Promise<PluggyAccount[]> {
-  const page = await request<Page<PluggyAccount>>(
+): Promise<{ id: string }[]> {
+  const page = await request<Page<{ id: string }>>(
     `/accounts?itemId=${encodeURIComponent(itemId)}`,
     { apiKey },
   );
   return page.results ?? [];
 }
 
-/** Todas as transações do intervalo, juntando as páginas. Datas em AAAA-MM-DD. */
+/** Todas as transações do intervalo, juntando as páginas. Datas AAAA-MM-DD. */
 export async function listTransactions(
   apiKey: string,
   accountId: string,
   from: string,
   to: string,
-): Promise<PluggyTransaction[]> {
-  const all: PluggyTransaction[] = [];
+): Promise<unknown[]> {
+  const all: unknown[] = [];
   for (let page = 1; ; page += 1) {
     const params = new URLSearchParams({
       accountId,
@@ -144,7 +121,7 @@ export async function listTransactions(
       pageSize: '500',
       page: String(page),
     });
-    const result = await request<Page<PluggyTransaction>>(
+    const result = await request<Page<unknown>>(
       `/transactions?${params.toString()}`,
       { apiKey },
     );
@@ -153,4 +130,26 @@ export async function listTransactions(
       return all;
     }
   }
+}
+
+/** Credenciais do usuário, decifradas. */
+export async function loadCredentials(
+  admin: SupabaseClient,
+  userId: string,
+): Promise<PluggyCredentials> {
+  const { data, error } = await admin
+    .from('pluggy_credentials')
+    .select('ciphertext, iv')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) {
+    throw error;
+  }
+  if (!data) {
+    throw new HttpError(
+      400,
+      'Cadastre o Client ID e o Client Secret da Pluggy primeiro.',
+    );
+  }
+  return JSON.parse(await decrypt(data.ciphertext, data.iv));
 }

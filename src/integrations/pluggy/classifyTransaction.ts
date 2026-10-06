@@ -1,4 +1,4 @@
-import type { PluggyAccount, PluggyTransaction } from './pluggyClient';
+import type { PluggyAccount, PluggyTransaction } from './pluggyTypes';
 
 export type TransactionVerdict =
   | { expense: true; amountCents: number }

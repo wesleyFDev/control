@@ -1,6 +1,8 @@
-import { and, count, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 import { db } from '../client';
+import { expenses } from '../schema';
+import { createExpense, deleteExpense } from './expensesRepository';
 import {
   pluggyAccounts,
   pluggyItems,
@@ -41,19 +43,10 @@ export async function listPluggyItems(): Promise<PluggyItemRow[]> {
     .orderBy(pluggyItems.createdAt);
 }
 
-/** Adiciona um itemId. Um item removido antes volta a valer. */
-export async function addPluggyItem(itemId: string): Promise<void> {
-  const now = nowIso();
-  await db
-    .insert(pluggyItems)
-    .values({ id: itemId, createdAt: now, updatedAt: now })
-    .onConflictDoUpdate({
-      target: pluggyItems.id,
-      set: { deletedAt: null, updatedAt: now },
-    });
-}
-
-/** Tira o item da sincronização. Os dados já baixados continuam no banco. */
+/**
+ * Tira o banco da tela quando a conexão foi removida na nuvem. Os dados já
+ * baixados e os gastos criados a partir deles continuam no aparelho.
+ */
 export async function removePluggyItem(itemId: string): Promise<void> {
   const now = nowIso();
   await db
@@ -75,6 +68,29 @@ export async function markItemSynced(
         : { lastSyncedAt: now, lastError: null, updatedAt: now },
     )
     .where(eq(pluggyItems.id, itemId));
+}
+
+/**
+ * Grava um item vindo do backend, com o nome do banco e a data em que o
+ * banco atualizou os dados. A sincronização só é marcada como feita por
+ * `markItemSynced`, depois de gravar as contas e as transações.
+ */
+export async function upsertBankItem(item: {
+  id: string;
+  name: string | null;
+  bankUpdatedAt: string | null;
+}): Promise<void> {
+  const now = nowIso();
+  const values = {
+    name: item.name,
+    bankUpdatedAt: item.bankUpdatedAt,
+    deletedAt: null,
+    updatedAt: now,
+  };
+  await db
+    .insert(pluggyItems)
+    .values({ id: item.id, ...values, createdAt: now })
+    .onConflictDoUpdate({ target: pluggyItems.id, set: values });
 }
 
 // ---------- Contas ----------
@@ -105,6 +121,10 @@ export async function upsertPluggyAccounts(
           'subtype',
           'number',
           'balanceCents',
+          'creditLimitCents',
+          'availableCreditLimitCents',
+          'balanceCloseDate',
+          'balanceDueDate',
           'currencyCode',
           'rawJson',
         ]),
@@ -112,45 +132,6 @@ export async function upsertPluggyAccounts(
         deletedAt: null,
       },
     });
-}
-
-export type PluggyAccountSummary = PluggyAccountRow & {
-  transactionCount: number;
-  candidateCount: number;
-};
-
-/** Contas dos itens ativos, com quantas transações e possíveis gastos cada uma tem. */
-export async function listPluggyAccounts(): Promise<PluggyAccountSummary[]> {
-  const accounts = await db
-    .select({ account: pluggyAccounts })
-    .from(pluggyAccounts)
-    .innerJoin(pluggyItems, eq(pluggyAccounts.itemId, pluggyItems.id))
-    .where(and(isNull(pluggyAccounts.deletedAt), isNull(pluggyItems.deletedAt)))
-    .orderBy(pluggyAccounts.name);
-
-  const counts = await db
-    .select({
-      accountId: pluggyTransactions.accountId,
-      candidate: pluggyTransactions.isExpenseCandidate,
-      total: count(),
-    })
-    .from(pluggyTransactions)
-    .where(isNull(pluggyTransactions.deletedAt))
-    .groupBy(
-      pluggyTransactions.accountId,
-      pluggyTransactions.isExpenseCandidate,
-    );
-
-  return accounts.map(({ account }) => {
-    const rows = counts.filter(c => c.accountId === account.id);
-    return {
-      ...account,
-      transactionCount: rows.reduce((sum, r) => sum + Number(r.total), 0),
-      candidateCount: rows
-        .filter(r => r.candidate)
-        .reduce((sum, r) => sum + Number(r.total), 0),
-    };
-  });
 }
 
 // ---------- Transações ----------
@@ -199,13 +180,66 @@ export async function upsertPluggyTransactions(
   }
 }
 
-export async function listPluggyTransactions(
+// ---------- Tela de bancos ----------
+
+export type BankSummary = {
+  item: PluggyItemRow;
+  accounts: PluggyAccountRow[];
+};
+
+/** Bancos ativos com as contas e os cartões de cada um. */
+export async function listBanks(): Promise<BankSummary[]> {
+  const [items, accounts] = await Promise.all([
+    listPluggyItems(),
+    db
+      .select()
+      .from(pluggyAccounts)
+      .where(isNull(pluggyAccounts.deletedAt))
+      .orderBy(pluggyAccounts.name),
+  ]);
+  return items.map(item => ({
+    item,
+    accounts: accounts.filter(a => a.itemId === item.id),
+  }));
+}
+
+export async function getBank(itemId: string): Promise<BankSummary | null> {
+  const banks = await listBanks();
+  return banks.find(b => b.item.id === itemId) ?? null;
+}
+
+/**
+ * - pending: parece gasto e ainda não foi passada para os gastos.
+ * - transferred: já virou gasto.
+ * - ignored: não parece gasto (entrada, estorno, pagamento de fatura).
+ */
+export type BankTransactionFilter =
+  | 'pending'
+  | 'transferred'
+  | 'ignored'
+  | 'all';
+
+export type BankTransaction = PluggyTransactionRow & {
+  /** Ligada a um gasto que ainda existe. */
+  transferred: boolean;
+};
+
+export async function listBankTransactions(
   accountId: string,
-  limit = 200,
-): Promise<PluggyTransactionRow[]> {
-  return db
-    .select()
+  filter: BankTransactionFilter = 'all',
+  limit = 300,
+): Promise<BankTransaction[]> {
+  const rows = await db
+    .select({ transaction: pluggyTransactions, expenseId: expenses.id })
     .from(pluggyTransactions)
+    // Um gasto apagado em Detalhes solta a transação, que volta a ser "a passar".
+    .leftJoin(
+      expenses,
+      and(
+        eq(pluggyTransactions.expenseId, expenses.id),
+        isNull(expenses.deletedAt),
+      ),
+    )
     .where(
       and(
         eq(pluggyTransactions.accountId, accountId),
@@ -214,4 +248,115 @@ export async function listPluggyTransactions(
     )
     .orderBy(desc(pluggyTransactions.date), desc(pluggyTransactions.postedAt))
     .limit(limit);
+
+  return rows
+    .map(({ transaction, expenseId }) => ({
+      ...transaction,
+      transferred: expenseId !== null,
+    }))
+    .filter(t => {
+      switch (filter) {
+        case 'pending':
+          return t.isExpenseCandidate && !t.transferred;
+        case 'transferred':
+          return t.transferred;
+        case 'ignored':
+          return !t.isExpenseCandidate && !t.transferred;
+        default:
+          return true;
+      }
+    });
+}
+
+export type TransferChoice = {
+  transactionId: string;
+  categoryId: string;
+  description: string;
+};
+
+export type TransferOwner = {
+  scope: 'personal' | 'family';
+  /** Obrigatório quando o gasto é pessoal. */
+  memberId: string | null;
+};
+
+/**
+ * Passa transações do banco para os gastos do app. Cada uma vira um gasto
+ * com o valor, a data e a descrição do banco, e fica ligada a ele. As que
+ * já foram passadas são ignoradas. Devolve quantas viraram gasto.
+ *
+ * Como no pagamento de faturas, o driver não garante transação: cada gasto
+ * é gravado e logo depois ligado, sem duplicar se algo falhar no meio.
+ */
+export async function transferToExpenses(
+  choices: TransferChoice[],
+  owner: TransferOwner,
+): Promise<number> {
+  if (owner.scope === 'personal' && !owner.memberId) {
+    throw new Error('Escolha de quem é o gasto.');
+  }
+  const ids = choices.map(c => c.transactionId);
+  if (ids.length === 0) {
+    return 0;
+  }
+  const rows = await db
+    .select({ transaction: pluggyTransactions, expenseId: expenses.id })
+    .from(pluggyTransactions)
+    .leftJoin(
+      expenses,
+      and(
+        eq(pluggyTransactions.expenseId, expenses.id),
+        isNull(expenses.deletedAt),
+      ),
+    )
+    .where(
+      and(
+        inArray(pluggyTransactions.id, ids),
+        isNull(pluggyTransactions.deletedAt),
+      ),
+    );
+
+  let created = 0;
+  for (const choice of choices) {
+    const row = rows.find(r => r.transaction.id === choice.transactionId);
+    if (!row || row.expenseId !== null) {
+      continue;
+    }
+    const amountCents = Math.abs(row.transaction.amountCents);
+    if (amountCents === 0) {
+      continue;
+    }
+    const expenseId = await createExpense({
+      amountCents,
+      categoryId: choice.categoryId,
+      date: row.transaction.date,
+      scope: owner.scope,
+      memberId: owner.scope === 'family' ? null : owner.memberId,
+      description: choice.description.trim() || row.transaction.description,
+      source: 'bank',
+      rawText: row.transaction.description,
+    });
+    await db
+      .update(pluggyTransactions)
+      .set({ expenseId, updatedAt: nowIso() })
+      .where(eq(pluggyTransactions.id, choice.transactionId));
+    created += 1;
+  }
+  return created;
+}
+
+/** Desfaz a passagem: apaga o gasto criado e solta a transação. */
+export async function undoTransfer(transactionId: string): Promise<void> {
+  const [row] = await db
+    .select({ expenseId: pluggyTransactions.expenseId })
+    .from(pluggyTransactions)
+    .where(eq(pluggyTransactions.id, transactionId));
+  if (!row?.expenseId) {
+    return;
+  }
+  await deleteExpense(row.expenseId);
+  await db
+    .update(pluggyTransactions)
+    .set({ expenseId: null, updatedAt: nowIso() })
+    .where(eq(pluggyTransactions.id, transactionId));
 }

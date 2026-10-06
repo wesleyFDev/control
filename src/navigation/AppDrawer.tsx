@@ -6,6 +6,7 @@ import {
 
 // Ferramenta temporária. Ver src/features/dbInspector/README.md.
 import DbInspectorNavigator from '../features/dbInspector/DbInspectorNavigator';
+import Banks from '../screens/banks/banks';
 import Bills from '../screens/bills/bills';
 import Chat from '../screens/chat/chat';
 import Details from '../screens/details/details';
@@ -61,6 +62,11 @@ export default function AppDrawer() {
         name="Bills"
         component={Bills}
         options={{ title: 'Contas a pagar' }}
+      />
+      <Drawer.Screen
+        name="Banks"
+        component={Banks}
+        options={{ title: 'Bancos' }}
       />
       <Drawer.Screen
         name="Family"

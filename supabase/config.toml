@@ -1,0 +1,10 @@
+# Configuração do Supabase CLI. Os valores omitidos usam o padrão do CLI.
+project_id = "control"
+
+# As funções conferem o usuário pelo token dentro do próprio código
+# (_shared/auth.ts), o que funciona com as chaves JWT antigas e novas.
+[functions.bank-data]
+verify_jwt = false
+
+[functions.pluggy-credentials]
+verify_jwt = false

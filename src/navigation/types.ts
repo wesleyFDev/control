@@ -18,6 +18,8 @@ export type AppDrawerParamList = {
   Reports: undefined;
   Details: undefined;
   Bills: undefined;
+  /** Dados dos bancos vindos da Pluggy, separados dos gastos. */
+  Banks: undefined;
   Family: undefined;
   Profile: undefined;
   Settings: undefined;
@@ -40,6 +42,8 @@ export type RootStackParamList = {
   PayableForm: { kind?: 'card' | 'boleto'; cardId?: string } | undefined;
   /** Fatura de um cartão num mês (AAAA-MM). */
   Invoice: { cardId: string; month: string };
+  /** Contas e cartões de um banco da Pluggy. */
+  BankDetail: { itemId: string };
 };
 
 export type RootStackScreenProps<T extends keyof RootStackParamList> =

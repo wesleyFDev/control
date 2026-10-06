@@ -1,5 +1,6 @@
 module.exports = {
   root: true,
   extends: '@react-native',
-  ignorePatterns: ['src/db/migrations/'],
+  // supabase/ roda no Deno, com outro TypeScript e outros imports.
+  ignorePatterns: ['src/db/migrations/', 'supabase/'],
 };

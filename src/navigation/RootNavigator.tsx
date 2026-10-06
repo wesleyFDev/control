@@ -1,7 +1,11 @@
 import React from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import { useSession } from '../backend/session';
+import { backendConfigured } from '../config/backend';
 import AiModel from '../screens/aiModel/aiModel';
+import BankDetail from '../screens/banks/bankDetail';
 import BankNotificationsScreen from '../screens/bankNotifications/bankNotifications';
 import CardForm from '../screens/bills/cardForm';
 import InvoiceScreen from '../screens/bills/invoice';
@@ -17,17 +21,36 @@ import type { RootStackParamList } from './types';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 /**
- * "Auth" fica fora do drawer. Enquanto não houver login, o app abre direto
- * em "App". Quando a autenticação existir, a rota inicial vai depender da sessão.
+ * "Auth" fica fora do drawer. Sem sessão, só as telas de entrar e criar
+ * conta existem; ao entrar, a navegação troca sozinha para o app. A sessão
+ * fica guardada no aparelho, então o app abre direto mesmo sem internet.
+ * Enquanto o backend não estiver configurado, o app abre sem login.
  */
 export default function RootNavigator() {
+  const { loading, session } = useSession();
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (backendConfigured && !session) {
+    return (
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Auth" component={AuthStack} />
+      </Stack.Navigator>
+    );
+  }
+
   return (
     <Stack.Navigator
       initialRouteName="App"
       screenOptions={{ headerShown: false }}
     >
       <Stack.Screen name="App" component={AppDrawer} />
-      <Stack.Screen name="Auth" component={AuthStack} />
       <Stack.Group
         screenOptions={{
           headerShown: true,
@@ -67,6 +90,11 @@ export default function RootNavigator() {
           options={{ title: 'Notificações do banco' }}
         />
         <Stack.Screen
+          name="BankDetail"
+          component={BankDetail}
+          options={{ title: 'Banco' }}
+        />
+        <Stack.Screen
           name="CardForm"
           component={CardForm}
           options={({ route }) => ({
@@ -90,3 +118,12 @@ export default function RootNavigator() {
     </Stack.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+  },
+});

@@ -36,9 +36,16 @@ export const members = sqliteTable(
     id: text('id').primaryKey(),
     name: text('name').notNull(),
     isSelf: integer('is_self', { mode: 'boolean' }).notNull().default(false),
+    /** Id do usuário no Supabase, para membros da família na nuvem. */
+    userId: text('user_id'),
     ...timestamps,
   },
-  table => [index('members_is_self_idx').on(table.isSelf)],
+  table => [
+    index('members_is_self_idx').on(table.isSelf),
+    uniqueIndex('members_user_id_idx')
+      .on(table.userId)
+      .where(sql`${table.userId} IS NOT NULL`),
+  ],
 );
 
 /** Categorias de gasto. Os gastos apontam para elas pelo `id`. */
@@ -79,8 +86,16 @@ export const categoryKeywords = sqliteTable(
 );
 
 export const EXPENSE_SCOPES = ['personal', 'family'] as const;
-/** installment: parcela de cartão ou boleto paga. */
-export const EXPENSE_SOURCES = ['chat', 'manual', 'installment'] as const;
+/**
+ * installment: parcela de cartão ou boleto paga.
+ * bank: transação do banco, vinda da Pluggy, passada para os gastos.
+ */
+export const EXPENSE_SOURCES = [
+  'chat',
+  'manual',
+  'installment',
+  'bank',
+] as const;
 
 /**
  * Gastos.
@@ -106,6 +121,12 @@ export const expenses = sqliteTable(
     source: text('source', { enum: EXPENSE_SOURCES }).notNull(),
     /** Frase original do chat, para revisar e melhorar a interpretação. */
     rawText: text('raw_text'),
+    /**
+     * `updated_at` da última versão enviada para a nuvem. Só gastos de
+     * família sobem; um gasto com `updated_at` maior que este tem mudança
+     * a enviar.
+     */
+    pushedAt: text('pushed_at'),
     ...timestamps,
   },
   table => [

@@ -7,6 +7,7 @@ import DatabaseGate from './src/db/DatabaseGate';
 import ModelGate from './src/features/aiSetup/ModelGate';
 import NotificationsIngestor from './src/integrations/notifications/NotificationsIngestor';
 import Navigation from './src/navigation';
+import FamilySyncer from './src/sync/FamilySyncer';
 
 export default function App() {
   const isDarkMode = useColorScheme() === 'dark';
@@ -18,6 +19,7 @@ export default function App() {
         <DatabaseGate>
           <ModelGate>
             <NotificationsIngestor />
+            <FamilySyncer />
             <Navigation />
           </ModelGate>
         </DatabaseGate>

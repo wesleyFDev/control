@@ -54,7 +54,7 @@ const SECTIONS: Section[] = [
       {
         title: 'Pluggy',
         description:
-          'Teste a conexão com as suas contas pelo Meu Pluggy. Por enquanto nada é importado.',
+          'Credenciais e conexões do Meu Pluggy, guardadas no backend. Os dados aparecem em "Bancos".',
         icon: 'link',
         route: 'Pluggy',
       },

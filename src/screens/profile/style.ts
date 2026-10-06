@@ -1,12 +1,2 @@
-import { StyleSheet } from 'react-native';
-
-export const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 18,
-  },
-});
+// O perfil usa o mesmo visual da tela da família.
+export { styles } from '../family/style';

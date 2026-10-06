@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -11,33 +11,22 @@ import {
   View,
 } from 'react-native';
 import { Feather } from '@react-native-vector-icons/feather/static';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { EDGES_WITH_HEADER } from '../../components/safeAreaEdges';
-import type {
-  PluggyItemRow,
-  PluggyTransactionRow,
-} from '../../db/pluggySchema';
 import {
-  addPluggyItem,
-  listPluggyAccounts,
-  listPluggyItems,
-  listPluggyTransactions,
-  removePluggyItem,
-  type PluggyAccountSummary,
-} from '../../db/repositories/pluggyRepository';
-import {
-  clearCredentials,
-  loadCredentials,
+  addCloudItem,
+  deleteCredentials,
+  getCredentialsStatus,
+  listCloudItems,
+  removeCloudItem,
   saveCredentials,
-} from '../../integrations/pluggy/credentialsStore';
-import {
-  syncPluggy,
-  type SyncResult,
-} from '../../integrations/pluggy/syncPluggy';
+  type CloudPluggyItem,
+  type CredentialsStatus,
+} from '../../backend/pluggyService';
+import { EDGES_WITH_HEADER } from '../../components/safeAreaEdges';
+import { backendConfigured } from '../../config/backend';
 import { colors } from '../../theme';
-import { formatDayLabel } from '../../utils/dates';
-import { formatBRL } from '../../utils/money';
 import { styles } from './style';
 
 /** Limite do plano gratuito do Meu Pluggy. */
@@ -49,7 +38,7 @@ function errorText(error: unknown): string {
 
 function formatDateTime(iso: string | null): string {
   if (!iso) {
-    return 'nunca';
+    return '';
   }
   const date = new Date(iso);
   return `${date.toLocaleDateString('pt-BR')} às ${date
@@ -58,37 +47,36 @@ function formatDateTime(iso: string | null): string {
 }
 
 /**
- * Integração com o Meu Pluggy. As credenciais ficam no Keychain/Keystore,
- * e contas e transações ficam nas tabelas `pluggy_*`, separadas dos gastos.
- * Nada é transformado em gasto ainda.
+ * Configuração do Meu Pluggy no backend. As credenciais vão para a Edge
+ * Function, que confere na Pluggy, cifra e guarda; o celular não as guarda.
+ * Os dados dos bancos aparecem na tela "Bancos".
  */
 export default function PluggyIntegration() {
-  const [savedClientId, setSavedClientId] = useState<string | null>(null);
+  const navigation = useNavigation();
+  const [status, setStatus] = useState<CredentialsStatus | null>(null);
+  const [items, setItems] = useState<CloudPluggyItem[]>([]);
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
-  const [items, setItems] = useState<PluggyItemRow[]>([]);
   const [newItemId, setNewItemId] = useState('');
-  const [accounts, setAccounts] = useState<PluggyAccountSummary[]>([]);
-  const [selected, setSelected] = useState<PluggyAccountSummary | null>(null);
-  const [transactions, setTransactions] = useState<PluggyTransactionRow[]>([]);
   const [progress, setProgress] = useState<string | null>(null);
-  const [lastResult, setLastResult] = useState<SyncResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
-    const [credentials, itemRows, accountRows] = await Promise.all([
-      loadCredentials(),
-      listPluggyItems(),
-      listPluggyAccounts(),
+    const [nextStatus, nextItems] = await Promise.all([
+      getCredentialsStatus(),
+      listCloudItems(),
     ]);
-    setSavedClientId(credentials?.clientId ?? null);
-    setItems(itemRows);
-    setAccounts(accountRows);
+    setStatus(nextStatus);
+    setItems(nextItems);
   }, []);
 
-  useEffect(() => {
-    reload().catch(err => setError(errorText(err)));
-  }, [reload]);
+  useFocusEffect(
+    useCallback(() => {
+      if (backendConfigured) {
+        reload().catch(err => setError(errorText(err)));
+      }
+    }, [reload]),
+  );
 
   const run = async (label: string, task: () => Promise<void>) => {
     setError(null);
@@ -104,11 +92,8 @@ export default function PluggyIntegration() {
   };
 
   const save = () =>
-    run('Guardando as credenciais...', async () => {
-      await saveCredentials({
-        clientId: clientId.trim(),
-        clientSecret: clientSecret.trim(),
-      });
+    run('Conferindo na Pluggy...', async () => {
+      await saveCredentials(clientId, clientSecret);
       setClientId('');
       setClientSecret('');
     });
@@ -116,61 +101,59 @@ export default function PluggyIntegration() {
   const forget = () =>
     Alert.alert(
       'Apagar as credenciais?',
-      'O app deixa de sincronizar. Os dados já baixados continuam no aparelho.',
+      'O app deixa de atualizar os bancos. Os dados já baixados continuam no celular.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Apagar',
           style: 'destructive',
-          onPress: () => run('Apagando...', clearCredentials),
+          onPress: () => run('Apagando...', deleteCredentials),
         },
       ],
     );
 
   const addItem = () => {
-    const id = newItemId.trim();
-    if (!id) {
+    if (!newItemId.trim()) {
       return;
     }
-    run('Adicionando o item...', async () => {
-      await addPluggyItem(id);
+    run('Adicionando...', async () => {
+      await addCloudItem(newItemId);
       setNewItemId('');
     });
   };
 
-  const sync = () =>
-    run('Sincronizando...', async () => {
-      const result = await syncPluggy(setProgress);
-      setLastResult(result);
-    });
+  const removeItem = (itemId: string) =>
+    Alert.alert(
+      'Remover a conexão?',
+      'O banco some da tela "Bancos" na próxima atualização. Os gastos já criados a partir dele continuam.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Remover',
+          style: 'destructive',
+          onPress: () => run('Removendo...', () => removeCloudItem(itemId)),
+        },
+      ],
+    );
 
-  const openAccount = async (account: PluggyAccountSummary) => {
-    setError(null);
-    try {
-      setTransactions(await listPluggyTransactions(account.id));
-      setSelected(account);
-    } catch (err) {
-      setError(errorText(err));
-    }
-  };
-
-  const busy = progress !== null;
-  const canSave = clientId.trim() !== '' && clientSecret.trim() !== '';
-  const canSync = Boolean(savedClientId) && items.length > 0 && !busy;
-
-  if (selected) {
+  if (!backendConfigured) {
     return (
       <SafeAreaView style={styles.container} edges={EDGES_WITH_HEADER}>
-        <ScrollView contentContainerStyle={styles.content}>
-          <TransactionsView
-            account={selected}
-            transactions={transactions}
-            onBack={() => setSelected(null)}
-          />
-        </ScrollView>
+        <View style={styles.content}>
+          <View style={styles.notice}>
+            <Feather name="info" size={16} color={colors.primary} />
+            <Text style={styles.noticeText}>
+              A Pluggy é chamada pelo backend, que ainda não foi configurado.
+              Preencha src/config/backend.ts.
+            </Text>
+          </View>
+        </View>
       </SafeAreaView>
     );
   }
+
+  const busy = progress !== null;
+  const canSave = clientId.trim() !== '' && clientSecret.trim() !== '';
 
   return (
     <SafeAreaView style={styles.container} edges={EDGES_WITH_HEADER}>
@@ -185,19 +168,22 @@ export default function PluggyIntegration() {
           <View style={styles.notice}>
             <Feather name="info" size={16} color={colors.primary} />
             <Text style={styles.noticeText}>
-              Os dados da Pluggy ficam guardados separados dos seus gastos. Por
-              enquanto nada vira gasto: a mesclagem vem depois. O Meu Pluggy
-              atualiza os bancos a cada 24 horas.
+              As credenciais ficam cifradas no backend e as chamadas à Pluggy
+              saem de lá. O Meu Pluggy atualiza os bancos a cada 24 horas.
             </Text>
           </View>
 
           <Text style={styles.sectionTitle}>Credenciais</Text>
-          {savedClientId ? (
+          {status === null ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : status.configured ? (
             <View style={styles.card}>
-              <Text style={styles.accountName}>Guardadas no aparelho</Text>
-              <Text style={styles.accountMeta}>
-                Client ID {savedClientId.slice(0, 8)}…
-              </Text>
+              <Text style={styles.accountName}>Guardadas no backend</Text>
+              {status.updatedAt && (
+                <Text style={styles.accountMeta}>
+                  Desde {formatDateTime(status.updatedAt)}
+                </Text>
+              )}
               <Pressable
                 accessibilityRole="button"
                 onPress={forget}
@@ -233,8 +219,8 @@ export default function PluggyIntegration() {
                 accessibilityLabel="Client Secret"
               />
               <Text style={styles.hint}>
-                Ficam no Keychain do iOS ou no Keystore do Android, nunca no
-                banco do app.
+                O backend confere na Pluggy antes de guardar. Depois disso, nem
+                o app consegue ler de volta.
               </Text>
               <Pressable
                 accessibilityRole="button"
@@ -254,28 +240,23 @@ export default function PluggyIntegration() {
           )}
 
           <Text style={styles.sectionTitle}>
-            Itens ({items.length}/{MAX_ITEMS})
+            Conexões ({items.length}/{MAX_ITEMS})
           </Text>
           {items.map(item => (
-            <View key={item.id} style={styles.itemRow}>
+            <View key={item.itemId} style={styles.itemRow}>
               <View style={styles.accountText}>
                 <Text style={styles.itemId} numberOfLines={1}>
-                  {item.id}
+                  {item.itemId}
                 </Text>
                 <Text style={styles.accountMeta}>
-                  Última sincronização: {formatDateTime(item.lastSyncedAt)}
+                  Adicionada em {formatDateTime(item.createdAt)}
                 </Text>
-                {item.lastError && (
-                  <Text style={styles.error}>{item.lastError}</Text>
-                )}
               </View>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`Remover item ${item.id}`}
+                accessibilityLabel={`Remover conexão ${item.itemId}`}
                 hitSlop={10}
-                onPress={() =>
-                  run('Removendo...', () => removePluggyItem(item.id))
-                }
+                onPress={() => removeItem(item.itemId)}
               >
                 <Feather name="x" size={18} color={colors.textMuted} />
               </Pressable>
@@ -296,7 +277,7 @@ export default function PluggyIntegration() {
               />
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Adicionar item"
+                accessibilityLabel="Adicionar conexão"
                 disabled={!newItemId.trim() || busy}
                 onPress={addItem}
                 style={({ pressed }) => [
@@ -312,16 +293,14 @@ export default function PluggyIntegration() {
 
           <Pressable
             accessibilityRole="button"
-            disabled={!canSync}
-            onPress={sync}
+            onPress={() => navigation.navigate('App', { screen: 'Banks' })}
             style={({ pressed }) => [
               styles.primaryButton,
               pressed && styles.pressed,
-              !canSync && styles.disabled,
             ]}
           >
-            <Feather name="refresh-cw" size={16} color={colors.onPrimary} />
-            <Text style={styles.primaryButtonText}>Sincronizar agora</Text>
+            <Feather name="briefcase" size={16} color={colors.onPrimary} />
+            <Text style={styles.primaryButtonText}>Ver os bancos</Text>
           </Pressable>
 
           {progress && (
@@ -331,123 +310,8 @@ export default function PluggyIntegration() {
             </View>
           )}
           {error && <Text style={styles.error}>{error}</Text>}
-          {lastResult && !busy && (
-            <Text style={styles.hint}>
-              Última sincronização: {lastResult.items} item(ns),{' '}
-              {lastResult.accounts} conta(s) e {lastResult.transactions}{' '}
-              transação(ões) recebidas
-              {lastResult.errors.length > 0
-                ? `, ${lastResult.errors.length} item(ns) com erro.`
-                : '.'}
-            </Text>
-          )}
-
-          {accounts.length > 0 && (
-            <Text style={styles.sectionTitle}>Contas guardadas</Text>
-          )}
-          {accounts.map(account => (
-            <Pressable
-              key={account.id}
-              accessibilityRole="button"
-              accessibilityLabel={`Ver transações de ${account.name}`}
-              onPress={() => openAccount(account)}
-              style={({ pressed }) => [
-                styles.accountCard,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Feather
-                name={account.type === 'CREDIT' ? 'credit-card' : 'briefcase'}
-                size={18}
-                color={colors.primary}
-              />
-              <View style={styles.accountText}>
-                <Text style={styles.accountName}>
-                  {account.marketingName || account.name}
-                </Text>
-                <Text style={styles.accountMeta}>
-                  {account.type === 'CREDIT' ? 'Cartão' : 'Conta'} ·{' '}
-                  {account.transactionCount} transações ·{' '}
-                  {account.candidateCount} possíveis gastos
-                </Text>
-              </View>
-              <Text style={styles.accountBalance}>
-                {formatBRL(account.balanceCents)}
-              </Text>
-              <Feather
-                name="chevron-right"
-                size={16}
-                color={colors.textMuted}
-              />
-            </Pressable>
-          ))}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
-  );
-}
-
-function TransactionsView({
-  account,
-  transactions,
-  onBack,
-}: {
-  account: PluggyAccountSummary;
-  transactions: PluggyTransactionRow[];
-  onBack: () => void;
-}) {
-  return (
-    <View style={styles.previewContainer}>
-      <Pressable
-        accessibilityRole="button"
-        onPress={onBack}
-        style={({ pressed }) => [styles.back, pressed && styles.pressed]}
-      >
-        <Feather name="arrow-left" size={16} color={colors.primary} />
-        <Text style={styles.backText}>Voltar</Text>
-      </Pressable>
-
-      <Text style={styles.cardTitle}>
-        {account.marketingName || account.name}
-      </Text>
-      <Text style={styles.hint}>
-        {account.transactionCount} transações guardadas, das quais{' '}
-        {account.candidateCount} virariam gastos. Mostrando as{' '}
-        {transactions.length} mais recentes.
-      </Text>
-
-      {transactions.map(transaction => (
-        <View key={transaction.id} style={styles.transaction}>
-          <View style={styles.transactionText}>
-            <Text style={styles.transactionDescription} numberOfLines={2}>
-              {transaction.description}
-            </Text>
-            <Text style={styles.accountMeta}>
-              {formatDayLabel(transaction.date)}
-              {transaction.operationType
-                ? ` · ${transaction.operationType}`
-                : ''}
-              {transaction.status === 'PENDING' ? ' · pendente' : ''}
-              {transaction.category ? ` · ${transaction.category}` : ''}
-            </Text>
-            <Text
-              style={[
-                styles.verdict,
-                transaction.isExpenseCandidate
-                  ? styles.verdictYes
-                  : styles.verdictNo,
-              ]}
-            >
-              {transaction.isExpenseCandidate
-                ? 'Viraria gasto'
-                : `Ignorada: ${transaction.ignoreReason}`}
-            </Text>
-          </View>
-          <Text style={styles.transactionAmount}>
-            {formatBRL(transaction.amountCents)}
-          </Text>
-        </View>
-      ))}
-    </View>
   );
 }

@@ -6,6 +6,8 @@ import m0002 from './20261002181821_pluggy/migration.sql';
 import m0003 from './20261002184802_notification_captures/migration.sql';
 import m0004 from './20261002190934_bills/migration.sql';
 import m0005 from './20261005114722_notification_app_label/migration.sql';
+import m0006 from './20261005140515_bank_data/migration.sql';
+import m0007 from './20261006112409_family_sync/migration.sql';
 
   export default {
     migrations: {
@@ -14,7 +16,9 @@ import m0005 from './20261005114722_notification_app_label/migration.sql';
 "20261002181821_pluggy": m0002,
 "20261002184802_notification_captures": m0003,
 "20261002190934_bills": m0004,
-"20261005114722_notification_app_label": m0005
+"20261005114722_notification_app_label": m0005,
+"20261005140515_bank_data": m0006,
+"20261006112409_family_sync": m0007
 }
   }
   

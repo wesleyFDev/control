@@ -1,8 +1,9 @@
 import { and, desc, eq, isNull } from 'drizzle-orm';
 
 import { uuidv4 } from '../../utils/uuid';
+import { emitExpensesChanged } from '../changeEvents';
 import { db } from '../client';
-import { categories, expenses, members } from '../schema';
+import { categories, expenses, members, type EXPENSE_SOURCES } from '../schema';
 
 /** Gasto com o nome e o ícone da categoria e o nome do membro, para listas. */
 export type ExpenseListItem = {
@@ -28,7 +29,7 @@ export type ExpenseChanges = {
 };
 
 export type NewExpense = ExpenseChanges & {
-  source: 'chat' | 'manual' | 'installment';
+  source: (typeof EXPENSE_SOURCES)[number];
   /** Frase original do chat. */
   rawText: string | null;
 };
@@ -44,6 +45,7 @@ export async function createExpense(input: NewExpense): Promise<string> {
     createdAt: now,
     updatedAt: now,
   });
+  emitExpensesChanged();
   return id;
 }
 
@@ -82,11 +84,12 @@ export async function updateExpense(
       updatedAt: new Date().toISOString(),
     })
     .where(and(eq(expenses.id, id), isNull(expenses.deletedAt)));
+  emitExpensesChanged();
 }
 
 /**
  * Exclusão lógica: o gasto some das listas, mas a linha fica no banco com
- * `deleted_at`, para a exclusão poder ser sincronizada no futuro.
+ * `deleted_at`, para a exclusão de um gasto de família chegar à nuvem.
  */
 export async function deleteExpense(id: string): Promise<void> {
   const now = new Date().toISOString();
@@ -94,4 +97,5 @@ export async function deleteExpense(id: string): Promise<void> {
     .update(expenses)
     .set({ deletedAt: now, updatedAt: now })
     .where(and(eq(expenses.id, id), isNull(expenses.deletedAt)));
+  emitExpensesChanged();
 }

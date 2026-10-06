@@ -10,6 +10,7 @@ export default defineConfig({
     './src/db/pluggySchema.ts',
     './src/db/notificationSchema.ts',
     './src/db/billsSchema.ts',
+    './src/db/syncSchema.ts',
   ],
   out: './src/db/migrations',
 });

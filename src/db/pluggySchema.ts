@@ -2,9 +2,9 @@
  * Tabelas da integração com a Pluggy, separadas das tabelas do app.
  *
  * Elas guardam os dados como vieram da Pluggy, sem misturar com os gastos.
- * A mesclagem com a tabela `expenses` fica para depois: a coluna
- * `expense_id` de `pluggy_transactions` existe para ligar cada transação
- * ao gasto criado a partir dela, quando isso for feito.
+ * O usuário escolhe quais transações passar para a tabela `expenses`, e a
+ * coluna `expense_id` de `pluggy_transactions` liga cada uma ao gasto
+ * criado a partir dela.
  *
  * Os ids são os da própria Pluggy, então baixar a mesma transação de novo
  * atualiza a linha em vez de duplicar.
@@ -25,6 +25,10 @@ const timestamps = {
 /** Conexões do Meu Pluggy, uma por banco. O id é o itemId do Dashboard. */
 export const pluggyItems = sqliteTable('pluggy_items', {
   id: text('id').primaryKey(),
+  /** Nome do banco, como a Pluggy informa no conector. */
+  name: text('name'),
+  /** Quando o banco atualizou os dados na Pluggy, em ISO 8601 UTC. */
+  bankUpdatedAt: text('bank_updated_at'),
   /** Última sincronização bem-sucedida, em ISO 8601 UTC. */
   lastSyncedAt: text('last_synced_at'),
   /** Mensagem do último erro de sincronização, se houver. */
@@ -46,7 +50,17 @@ export const pluggyAccounts = sqliteTable(
     type: text('type').notNull(),
     subtype: text('subtype'),
     number: text('number'),
+    /**
+     * Conta (BANK): saldo. Cartão (CREDIT): valor da fatura atual, como a
+     * Pluggy informa.
+     */
     balanceCents: integer('balance_cents').notNull(),
+    /** Só nos cartões. */
+    creditLimitCents: integer('credit_limit_cents'),
+    availableCreditLimitCents: integer('available_credit_limit_cents'),
+    /** Fechamento e vencimento da fatura atual, AAAA-MM-DD. */
+    balanceCloseDate: text('balance_close_date'),
+    balanceDueDate: text('balance_due_date'),
     currencyCode: text('currency_code').notNull(),
     /** Resposta completa da Pluggy, para não perder campos na mesclagem. */
     rawJson: text('raw_json').notNull(),
@@ -84,7 +98,7 @@ export const pluggyTransactions = sqliteTable(
       mode: 'boolean',
     }).notNull(),
     ignoreReason: text('ignore_reason'),
-    /** Gasto criado a partir desta transação, quando a mesclagem existir. */
+    /** Gasto criado a partir desta transação, ao passá-la para os gastos. */
     expenseId: text('expense_id').references(() => expenses.id, {
       onDelete: 'set null',
     }),

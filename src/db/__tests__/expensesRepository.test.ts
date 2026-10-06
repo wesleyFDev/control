@@ -27,7 +27,7 @@ function seed() {
   const exec = (query: string, params: unknown[] = []) =>
     sqlite.executeSync(query, params as never);
   exec(
-    "INSERT INTO members VALUES ('m-self', 'Wesley', 1, ?, ?, NULL), ('m-ana', 'Ana', 0, ?, ?, NULL)",
+    "INSERT INTO members (id, name, is_self, created_at, updated_at) VALUES ('m-self', 'Wesley', 1, ?, ?), ('m-ana', 'Ana', 0, ?, ?)",
     [NOW, NOW, NOW, NOW],
   );
   exec(
