@@ -9,6 +9,8 @@ export type NotificationStatus = {
   permissionGranted: boolean;
   /** Captura de qualquer app as notificações com valor em R$. */
   moneyFromAnyApp: boolean;
+  /** Captura qualquer notificação de qualquer app, para diagnóstico. */
+  captureAll: boolean;
   /** Milissegundos desde 1970. Zero quando nunca aconteceu. */
   lastConnectedAt: number;
   lastDisconnectedAt: number;
@@ -27,6 +29,7 @@ type NativeBankNotifications = {
   setAllowedPackages(packages: string[]): Promise<boolean>;
   setBlockedPackages(packages: string[]): Promise<boolean>;
   setMoneyFromAnyApp(enabled: boolean): Promise<boolean>;
+  setCaptureAll(enabled: boolean): Promise<boolean>;
   drainQueue(): Promise<string[]>;
 };
 
@@ -43,8 +46,8 @@ export type RawBankNotification = {
   postedAt: number;
   title: string;
   text: string;
-  /** Por que passou no filtro: app marcado ou valor em R$. */
-  matchedBy?: 'allowed' | 'money';
+  /** Por que passou no filtro: app marcado, valor em R$ ou captura total. */
+  matchedBy?: 'allowed' | 'money' | 'all';
 };
 
 function requireNative(): NativeBankNotifications {
@@ -66,6 +69,7 @@ export const bankNotifications = {
     requireNative().setBlockedPackages(packages),
   setMoneyFromAnyApp: (enabled: boolean) =>
     requireNative().setMoneyFromAnyApp(enabled),
+  setCaptureAll: (enabled: boolean) => requireNative().setCaptureAll(enabled),
   /** Lê e esvazia a fila de notificações guardada pelo serviço nativo. */
   async drainQueue(): Promise<RawBankNotification[]> {
     if (!native) {

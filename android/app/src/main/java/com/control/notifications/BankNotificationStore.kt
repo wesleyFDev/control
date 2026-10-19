@@ -12,6 +12,9 @@ import java.io.File
  * - `money_from_any_app`: captura de qualquer outro app as notificações que
  *   mostram um valor em R$. É o que permite descobrir de qual app vêm as
  *   notificações do banco, sem saber o pacote antes.
+ * - `capture_all`: captura qualquer notificação de qualquer app, com ou sem
+ *   valor. Serve para descobrir o formato das notificações de um banco que
+ *   não está sendo reconhecido; os bloqueados continuam de fora.
  *
  * A fila é um arquivo com um JSON por linha, na pasta interna do app.
  */
@@ -20,6 +23,7 @@ object BankNotificationStore {
   private const val KEY_ALLOWED = "allowed_packages"
   private const val KEY_BLOCKED = "blocked_packages"
   private const val KEY_MONEY_ANY_APP = "money_from_any_app"
+  private const val KEY_CAPTURE_ALL = "capture_all"
   private const val KEY_CONNECTED_AT = "last_connected_at"
   private const val KEY_DISCONNECTED_AT = "last_disconnected_at"
   private const val KEY_CAPTURED_AT = "last_captured_at"
@@ -52,6 +56,13 @@ object BankNotificationStore {
 
   fun setMoneyFromAnyApp(context: Context, enabled: Boolean) {
     prefs(context).edit().putBoolean(KEY_MONEY_ANY_APP, enabled).apply()
+  }
+
+  fun captureAll(context: Context): Boolean =
+    prefs(context).getBoolean(KEY_CAPTURE_ALL, false)
+
+  fun setCaptureAll(context: Context, enabled: Boolean) {
+    prefs(context).edit().putBoolean(KEY_CAPTURE_ALL, enabled).apply()
   }
 
   fun markConnected(context: Context) {

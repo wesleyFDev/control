@@ -11,6 +11,7 @@ import Bills from '../screens/bills/bills';
 import Chat from '../screens/chat/chat';
 import Details from '../screens/details/details';
 import Family from '../screens/family/family';
+import FamilyExpenses from '../screens/familyExpenses/familyExpenses';
 import NewExpense from '../screens/newExpense/newExpense';
 import Profile from '../screens/profile/profile';
 import Reports from '../screens/reports/reports';
@@ -57,6 +58,11 @@ export default function AppDrawer() {
         name="Details"
         component={Details}
         options={{ title: 'Detalhes' }}
+      />
+      <Drawer.Screen
+        name="FamilyExpenses"
+        component={FamilyExpenses}
+        options={{ title: 'Gastos da família' }}
       />
       <Drawer.Screen
         name="Bills"

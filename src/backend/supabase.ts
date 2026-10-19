@@ -73,11 +73,21 @@ export async function invokeFunction<T>(
   });
   if (error) {
     const context = (error as { context?: Response }).context;
-    const detail = await context
+    const body = await context
       ?.json()
-      .then((b: { error?: string }) => b?.error)
+      .then((b: { error?: string; code?: string; message?: string }) => b)
       .catch(() => null);
-    throw new Error(detail ?? error.message ?? 'Falha ao falar com o backend.');
+    if (context?.status === 404 && body?.code === 'NOT_FOUND') {
+      throw new Error(
+        `A função "${name}" não está publicada no Supabase. Rode: npx supabase functions deploy ${name}`,
+      );
+    }
+    throw new Error(
+      body?.error ??
+        body?.message ??
+        error.message ??
+        'Falha ao falar com o backend.',
+    );
   }
   return data as T;
 }

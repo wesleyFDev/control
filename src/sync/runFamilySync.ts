@@ -3,6 +3,7 @@ import { fetchMyFamily, type MyFamily } from '../backend/familyService';
 import { supabase } from '../backend/supabase';
 import { refreshCategoryRegistry } from '../db/repositories/categoriesRepository';
 import {
+  pullDisputes,
   pullFamilyExpenses,
   pushFamilyExpenses,
   syncFamilyMembers,
@@ -54,6 +55,8 @@ async function sync(): Promise<FamilySyncResult> {
     mine.family.id,
     supabaseFamilyRemote,
   );
+  // Depois dos gastos, para a contestação já encontrar o gasto aqui.
+  await pullDisputes(mine.family.id, supabaseFamilyRemote);
   if (newCategories > 0) {
     await refreshCategoryRegistry();
   }

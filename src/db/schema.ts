@@ -127,6 +127,11 @@ export const expenses = sqliteTable(
      * a enviar.
      */
     pushedAt: text('pushed_at'),
+    /**
+     * Usuário do Supabase que lançou o gasto de família. Vazio num gasto
+     * feito neste celular que ainda não subiu.
+     */
+    createdByUserId: text('created_by_user_id'),
     ...timestamps,
   },
   table => [

@@ -2,6 +2,7 @@ import { and, eq, gt, inArray, isNotNull, or, sql } from 'drizzle-orm';
 
 import { db } from '../db/client';
 import { categories, expenses, members, EXPENSE_SOURCES } from '../db/schema';
+import { expenseDisputes, DISPUTE_STATUSES } from '../db/disputeSchema';
 import { syncState } from '../db/syncSchema';
 import { uuidv4 } from '../utils/uuid';
 
@@ -41,6 +42,21 @@ export type RemoteExpenseInput = Omit<
   'created_at' | 'updated_at'
 >;
 
+/** Linha de `expense_disputes` como o Supabase devolve. */
+export type RemoteDispute = {
+  id: string;
+  expense_id: string;
+  family_id: string;
+  opened_by: string | null;
+  reason: string;
+  status: string;
+  resolution_note: string | null;
+  resolved_by: string | null;
+  resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 /** O que a sincronização precisa da nuvem. Nos testes, uma versão em memória. */
 export interface FamilyRemote {
   upsertExpenses(rows: RemoteExpenseInput[]): Promise<void>;
@@ -49,6 +65,11 @@ export interface FamilyRemote {
     familyId: string,
     since: string | null,
   ): Promise<RemoteExpense[]>;
+  /** Contestações com `updated_at` maior que `since`, em ordem crescente. */
+  pullDisputes(
+    familyId: string,
+    since: string | null,
+  ): Promise<RemoteDispute[]>;
 }
 
 const PUSH_BATCH = 100;
@@ -60,6 +81,8 @@ const PUSH_BATCH = 100;
 const PULL_OVERLAP_MS = 5 * 60 * 1000;
 
 const cursorKey = (familyId: string) => `family_pull_cursor:${familyId}`;
+const disputeCursorKey = (familyId: string) =>
+  `family_dispute_cursor:${familyId}`;
 
 /** O Postgres devolve "2026-10-06T12:00:00.123+00:00"; aqui tudo é ISO com Z. */
 function toIso(value: string): string {
@@ -87,9 +110,7 @@ async function writeState(key: string, value: string): Promise<void> {
 
 /** Esquece o progresso, por exemplo ao sair da família ou da conta. */
 export async function resetFamilySyncState(): Promise<void> {
-  await db
-    .delete(syncState)
-    .where(sql`${syncState.key} LIKE 'family_pull_cursor:%'`);
+  await db.delete(syncState).where(sql`${syncState.key} LIKE 'family_%'`);
 }
 
 export async function pushFamilyExpenses(
@@ -155,6 +176,8 @@ export async function pushFamilyExpenses(
         // Pessoal: saiu da nuvem, não sobe mais até voltar a ser de família.
         .set({
           pushedAt: expense.scope === 'family' ? expense.updatedAt : null,
+          // Na nuvem, quem lançou é quem enviou primeiro.
+          createdByUserId: expense.createdByUserId ?? ctx.userId,
         })
         // Se mudou durante o envio, continua pendente.
         .where(
@@ -242,6 +265,7 @@ export async function pullFamilyExpenses(
       deletedAt: row.deleted_at ? toIso(row.deleted_at) : null,
       // Recebido da nuvem: não precisa subir de novo.
       pushedAt: clientUpdatedAt,
+      createdByUserId: row.created_by,
     };
     await db
       .insert(expenses)
@@ -257,6 +281,51 @@ export async function pullFamilyExpenses(
 
   await writeState(cursorKey(familyId), maxCursor);
   return { pulled, newCategories };
+}
+
+/**
+ * Recebe as contestações da família. A nuvem é a dona delas: a versão de lá
+ * sempre substitui a local.
+ */
+export async function pullDisputes(
+  familyId: string,
+  remote: FamilyRemote,
+): Promise<number> {
+  const cursor = await readState(disputeCursorKey(familyId));
+  const since = cursor
+    ? new Date(new Date(cursor).getTime() - PULL_OVERLAP_MS).toISOString()
+    : null;
+  const rows = await remote.pullDisputes(familyId, since);
+  let maxCursor = cursor ?? '';
+  for (const row of rows) {
+    const updatedAt = toIso(row.updated_at);
+    if (updatedAt > maxCursor) {
+      maxCursor = updatedAt;
+    }
+    const status = (DISPUTE_STATUSES as readonly string[]).includes(row.status)
+      ? (row.status as (typeof DISPUTE_STATUSES)[number])
+      : 'open';
+    const values = {
+      expenseId: row.expense_id,
+      familyId: row.family_id,
+      openedByUserId: row.opened_by,
+      reason: row.reason,
+      status,
+      resolutionNote: row.resolution_note,
+      resolvedByUserId: row.resolved_by,
+      resolvedAt: row.resolved_at ? toIso(row.resolved_at) : null,
+      createdAt: toIso(row.created_at),
+      updatedAt,
+    };
+    await db
+      .insert(expenseDisputes)
+      .values({ id: row.id, ...values })
+      .onConflictDoUpdate({ target: expenseDisputes.id, set: values });
+  }
+  if (rows.length > 0) {
+    await writeState(disputeCursorKey(familyId), maxCursor);
+  }
+  return rows.length;
 }
 
 export type CloudMember = { userId: string; displayName: string };

@@ -1,6 +1,7 @@
 package com.control
 
 import android.os.Bundle
+import com.control.security.SecureScreen
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -20,6 +21,8 @@ class MainActivity : ReactActivity() {
    */
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(null)
+    // Com o bloqueio ligado, a tela de recentes não mostra o conteúdo.
+    SecureScreen.apply(this)
   }
 
   /**

@@ -57,6 +57,15 @@ describe('parseNotification', () => {
     expect(result.expense === false && result.reason).toContain(reason);
   });
 
+  it('entende o espaço não separável que os apps usam entre "R$" e o valor', () => {
+    const result = parseNotification(
+      'Compra aprovada',
+      'Compra de R$ 129,90 aprovada em LOJA CENTRO',
+    );
+    expect(result.amountCents).toBe(12990);
+    expect(result.expense).toBe(true);
+  });
+
   it('ignora números sem "R$", como finais de cartão', () => {
     expect(
       parseNotification('Cartão', 'Seu cartão final 1234 foi enviado'),

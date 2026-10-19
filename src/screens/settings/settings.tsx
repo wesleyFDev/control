@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EDGES_WITH_HEADER } from '../../components/safeAreaEdges';
 import { colors } from '../../theme';
+import SecuritySection from './securitySection';
 import { styles } from './style';
 
 type Item = {
@@ -113,6 +114,7 @@ export default function Settings() {
             </View>
           </View>
         ))}
+        <SecuritySection />
       </ScrollView>
     </SafeAreaView>
   );

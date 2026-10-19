@@ -7,8 +7,8 @@
  */
 export const backendConfig = {
   /** Ex.: https://abcdefgh.supabase.co */
-  supabaseUrl: '',
-  supabaseAnonKey: '',
+  supabaseUrl: 'https://xfxtahyhhkgfanwbwgfr.supabase.co',
+  supabaseAnonKey: 'sb_publishable_OrcVt-h0Av-hPq3LAooVpg_sHopLKhl',
   /** Edge Function que busca os dados dos bancos na Pluggy. */
   bankDataFunction: 'bank-data',
 };

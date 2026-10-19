@@ -290,6 +290,29 @@ export default function BankNotificationsScreen() {
             os apps marcados como "Todas".
           </Text>
 
+          <View style={styles.row}>
+            <Text style={styles.rowText}>
+              Capturar todas as notificações de todos os apps
+            </Text>
+            <Switch
+              value={status?.captureAll ?? false}
+              onValueChange={enabled =>
+                bankNotifications
+                  .setCaptureAll(enabled)
+                  .then(() => reload())
+                  .catch(err => setError(errorText(err)))
+              }
+              trackColor={{ true: colors.primary, false: colors.border }}
+              accessibilityLabel="Capturar todas as notificações de todos os apps"
+            />
+          </View>
+          <Text style={styles.hint}>
+            Para diagnóstico: guarda também as notificações sem valor, de
+            qualquer app (inclusive mensagens). Use para ver como o seu banco
+            escreve as notificações, marque o app como "Todas" e depois
+            desligue. Apps bloqueados continuam de fora.
+          </Text>
+
           {ruleApps.length === 0 && (
             <Text style={styles.hint}>
               Nenhum app ainda. Faça uma compra ou um Pix e abra esta tela de

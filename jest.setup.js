@@ -81,5 +81,11 @@ jest.mock('react-native-keychain', () => {
       store.delete(options?.service ?? 'default');
       return true;
     }),
+    // Nos testes, a "digital" sempre confirma e o celular tem bloqueio de tela.
+    isPasscodeAuthAvailable: jest.fn(async () => true),
+    ACCESS_CONTROL: {
+      BIOMETRY_ANY_OR_DEVICE_PASSCODE: 'BiometryAnyOrDevicePasscode',
+    },
+    STORAGE_TYPE: { AES_GCM: 'KeystoreAESGCM' },
   };
 });

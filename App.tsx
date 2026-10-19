@@ -7,6 +7,7 @@ import DatabaseGate from './src/db/DatabaseGate';
 import ModelGate from './src/features/aiSetup/ModelGate';
 import NotificationsIngestor from './src/integrations/notifications/NotificationsIngestor';
 import Navigation from './src/navigation';
+import AppLockGate from './src/security/AppLockGate';
 import FamilySyncer from './src/sync/FamilySyncer';
 
 export default function App() {
@@ -16,13 +17,15 @@ export default function App() {
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-        <DatabaseGate>
-          <ModelGate>
-            <NotificationsIngestor />
-            <FamilySyncer />
-            <Navigation />
-          </ModelGate>
-        </DatabaseGate>
+        <AppLockGate>
+          <DatabaseGate>
+            <ModelGate>
+              <NotificationsIngestor />
+              <FamilySyncer />
+              <Navigation />
+            </ModelGate>
+          </DatabaseGate>
+        </AppLockGate>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

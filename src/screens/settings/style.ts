@@ -60,6 +60,11 @@ export const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textMuted,
   },
+  error: {
+    marginTop: 4,
+    fontSize: 13,
+    color: colors.me,
+  },
   pressed: {
     opacity: 0.7,
   },

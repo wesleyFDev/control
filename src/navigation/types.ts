@@ -17,6 +17,8 @@ export type AppDrawerParamList = {
   NewExpense: undefined;
   Reports: undefined;
   Details: undefined;
+  /** Só os gastos de família, de todos os membros. */
+  FamilyExpenses: undefined;
   Bills: undefined;
   /** Dados dos bancos vindos da Pluggy, separados dos gastos. */
   Banks: undefined;

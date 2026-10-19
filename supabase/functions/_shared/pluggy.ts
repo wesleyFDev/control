@@ -5,7 +5,7 @@
  * 1. POST /auth troca Client ID e Client Secret por uma API key (2 horas).
  * 2. GET /items/{id} traz o nome do banco e quando ele atualizou os dados.
  * 3. GET /accounts?itemId= lista as contas e os cartões.
- * 4. GET /transactions?accountId= lista as transações, em páginas de até 500.
+ * 4. GET /v2/transactions?accountId= lista as transações, paginadas por cursor.
  */
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 
@@ -16,7 +16,10 @@ const BASE_URL = 'https://api.pluggy.ai';
 
 export type PluggyCredentials = { clientId: string; clientSecret: string };
 
-type Page<T> = { totalPages?: number; results?: T[] };
+type Page<T> = { results?: T[] };
+
+/** Resposta dos endpoints v2, paginados por cursor. */
+type CursorPage<T> = { results?: T[]; next?: string | null };
 
 export class PluggyError extends Error {
   constructor(message: string, public status?: number) {
@@ -105,7 +108,12 @@ export async function listAccounts(
   return page.results ?? [];
 }
 
-/** Todas as transações do intervalo, juntando as páginas. Datas AAAA-MM-DD. */
+/**
+ * Todas as transações do intervalo (AAAA-MM-DD), juntando as páginas.
+ * GET /v2/transactions pagina por cursor: cada resposta traz `next`, a
+ * query string pronta da página seguinte, ou null na última. O GET
+ * /transactions antigo, por número de página, foi descontinuado (410).
+ */
 export async function listTransactions(
   apiKey: string,
   accountId: string,
@@ -113,23 +121,19 @@ export async function listTransactions(
   to: string,
 ): Promise<unknown[]> {
   const all: unknown[] = [];
-  for (let page = 1; ; page += 1) {
-    const params = new URLSearchParams({
-      accountId,
-      from,
-      to,
-      pageSize: '500',
-      page: String(page),
-    });
-    const result = await request<Page<unknown>>(
-      `/transactions?${params.toString()}`,
+  const first = new URLSearchParams({ accountId, dateFrom: from, dateTo: to });
+  let query: string | null = `?${first.toString()}`;
+  while (query) {
+    const page: CursorPage<unknown> = await request<CursorPage<unknown>>(
+      `/v2/transactions${query}`,
       { apiKey },
     );
-    all.push(...(result.results ?? []));
-    if (!result.totalPages || page >= result.totalPages) {
-      return all;
-    }
+    all.push(...(page.results ?? []));
+    // O cursor é opaco: usa a query devolvida exatamente como veio.
+    const next = page.next ?? null;
+    query = next && !next.startsWith('?') ? `?${next}` : next;
   }
+  return all;
 }
 
 /** Credenciais do usuário, decifradas. */

@@ -20,11 +20,14 @@ import {
 } from '../../db/repositories/lookupsRepository';
 import { categories, expenses } from '../../db/schema';
 import { ensureSeedData } from '../../db/seed';
+import { expenseDisputes } from '../../db/disputeSchema';
 import {
+  pullDisputes,
   pullFamilyExpenses,
   pushFamilyExpenses,
   syncFamilyMembers,
   type FamilyRemote,
+  type RemoteDispute,
   type RemoteExpense,
   type RemoteExpenseInput,
 } from '../familySync';
@@ -42,8 +45,14 @@ function createFakeRemote() {
     // Mesmo formato que o Postgres devolve.
     return new Date(clock).toISOString().replace('Z', '+00:00');
   };
-  const remote: FamilyRemote & { rows: typeof rows; upserts: number } = {
+  const disputes = new Map<string, RemoteDispute>();
+  const remote: FamilyRemote & {
+    rows: typeof rows;
+    disputes: typeof disputes;
+    upserts: number;
+  } = {
     rows,
+    disputes,
     upserts: 0,
     async upsertExpenses(input: RemoteExpenseInput[]) {
       remote.upserts += input.length;
@@ -63,6 +72,15 @@ function createFakeRemote() {
           r =>
             r.family_id === familyId &&
             (!since || new Date(r.updated_at) > new Date(since)),
+        )
+        .sort((a, b) => a.updated_at.localeCompare(b.updated_at));
+    },
+    async pullDisputes(familyId: string, since: string | null) {
+      return [...disputes.values()]
+        .filter(
+          d =>
+            d.family_id === familyId &&
+            (!since || new Date(d.updated_at) > new Date(since)),
         )
         .sort((a, b) => a.updated_at.localeCompare(b.updated_at));
     },
@@ -120,6 +138,13 @@ describe('envio dos gastos de família', () => {
 
     // Nada mudou: nada a enviar.
     expect(await pushFamilyExpenses(ctx, remote)).toBe(0);
+
+    // Depois de subir, o gasto fica marcado como lançado por mim.
+    const [local] = await db
+      .select()
+      .from(expenses)
+      .where(eq(expenses.id, familyId));
+    expect(local.createdByUserId).toBe(ME);
   });
 
   it('edição sobe de novo; virar pessoal sobe como apagado, uma vez', async () => {
@@ -219,6 +244,11 @@ describe('recebimento dos gastos da família', () => {
       .from(categories)
       .where(eq(categories.id, 'pet-uuid'));
     expect(category.icon).toBe('heart');
+    const [local] = await db
+      .select()
+      .from(expenses)
+      .where(eq(expenses.id, row.id));
+    expect(local.createdByUserId).toBe(OTHER);
 
     // O que veio da nuvem não volta para ela.
     expect(await pushFamilyExpenses(ctx, remote)).toBe(0);
@@ -279,6 +309,57 @@ describe('recebimento dos gastos da família', () => {
   });
 });
 
+describe('contestações', () => {
+  it('recebe a contestação aberta e depois o encerramento', async () => {
+    const { remote, tick } = createFakeRemote();
+    const opened = tick();
+    const dispute: RemoteDispute = {
+      id: 'd1',
+      expense_id: 'e-1',
+      family_id: FAMILY,
+      opened_by: OTHER,
+      reason: 'Foi compra pessoal',
+      status: 'open',
+      resolution_note: null,
+      resolved_by: null,
+      resolved_at: null,
+      created_at: opened,
+      updated_at: opened,
+    };
+    remote.disputes.set('d1', dispute);
+    expect(await pullDisputes(FAMILY, remote)).toBe(1);
+    let [local] = await db
+      .select()
+      .from(expenseDisputes)
+      .where(eq(expenseDisputes.id, 'd1'));
+    expect(local).toMatchObject({
+      status: 'open',
+      openedByUserId: OTHER,
+      reason: 'Foi compra pessoal',
+    });
+
+    const closed = tick();
+    remote.disputes.set('d1', {
+      ...dispute,
+      status: 'resolved',
+      resolution_note: 'Corrigi para pessoal',
+      resolved_by: ME,
+      resolved_at: closed,
+      updated_at: closed,
+    });
+    await pullDisputes(FAMILY, remote);
+    [local] = await db
+      .select()
+      .from(expenseDisputes)
+      .where(eq(expenseDisputes.id, 'd1'));
+    expect(local).toMatchObject({
+      status: 'resolved',
+      resolutionNote: 'Corrigi para pessoal',
+      resolvedByUserId: ME,
+    });
+  });
+});
+
 describe('membros da família', () => {
   it('liga o "você" ao usuário, cria os outros e desativa quem saiu', async () => {
     await syncFamilyMembers(
@@ -295,5 +376,46 @@ describe('membros da família', () => {
     await syncFamilyMembers([{ userId: ME, displayName: 'Eu' }], ME);
     rows = await listMembers();
     expect(rows.some(m => m.userId === OTHER)).toBe(false);
+  });
+});
+
+describe('consulta dos gastos de família', () => {
+  it('traz só os de família do período, sem os apagados', async () => {
+    const { listFamilyExpenses } = jest.requireActual(
+      '../../db/repositories/familyExpensesRepository',
+    );
+    const keep = await createExpense({
+      ...base,
+      amountCents: 1000,
+      scope: 'family',
+      memberId: null,
+    });
+    const removed = await createExpense({
+      ...base,
+      amountCents: 2000,
+      scope: 'family',
+      memberId: null,
+    });
+    await deleteExpense(removed);
+    await createExpense({
+      ...base,
+      amountCents: 3000,
+      scope: 'personal',
+      memberId: selfId,
+    });
+    await createExpense({
+      ...base,
+      date: '2026-09-30',
+      amountCents: 4000,
+      scope: 'family',
+      memberId: null,
+    });
+
+    const rows = await listFamilyExpenses('2026-10-01', '2026-10-31');
+    expect(rows.map((r: { id: string }) => r.id)).toEqual([keep]);
+    expect(rows[0]).toMatchObject({
+      categoryName: 'Mercado',
+      memberName: null,
+    });
   });
 });

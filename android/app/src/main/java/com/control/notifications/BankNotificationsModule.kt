@@ -27,6 +27,7 @@ class BankNotificationsModule(private val context: ReactApplicationContext) :
     val status = Arguments.createMap()
     status.putBoolean("permissionGranted", permissionGranted())
     status.putBoolean("moneyFromAnyApp", BankNotificationStore.moneyFromAnyApp(context))
+    status.putBoolean("captureAll", BankNotificationStore.captureAll(context))
     status.putDouble("lastConnectedAt", BankNotificationStore.lastConnectedAt(context).toDouble())
     status.putDouble(
       "lastDisconnectedAt",
@@ -93,6 +94,12 @@ class BankNotificationsModule(private val context: ReactApplicationContext) :
   @ReactMethod
   fun setMoneyFromAnyApp(enabled: Boolean, promise: Promise) {
     BankNotificationStore.setMoneyFromAnyApp(context, enabled)
+    promise.resolve(true)
+  }
+
+  @ReactMethod
+  fun setCaptureAll(enabled: Boolean, promise: Promise) {
+    BankNotificationStore.setCaptureAll(context, enabled)
     promise.resolve(true)
   }
 

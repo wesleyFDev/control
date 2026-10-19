@@ -175,7 +175,14 @@ export default function PluggyIntegration() {
 
           <Text style={styles.sectionTitle}>Credenciais</Text>
           {status === null ? (
-            <ActivityIndicator color={colors.primary} />
+            // Sem resposta do backend, o erro aparece no fim da tela.
+            error ? (
+              <Text style={styles.hint}>
+                Não foi possível consultar as credenciais.
+              </Text>
+            ) : (
+              <ActivityIndicator color={colors.primary} />
+            )
           ) : status.configured ? (
             <View style={styles.card}>
               <Text style={styles.accountName}>Guardadas no backend</Text>

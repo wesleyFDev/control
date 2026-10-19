@@ -30,6 +30,7 @@ const QUICK_ACTIONS: Item[] = [
 const MENU_ITEMS: Item[] = [
   { route: 'Reports', label: 'Relatórios', icon: 'pie-chart' },
   { route: 'Details', label: 'Detalhes', icon: 'list' },
+  { route: 'FamilyExpenses', label: 'Gastos da família', icon: 'home' },
   { route: 'Bills', label: 'Contas a pagar', icon: 'credit-card' },
   { route: 'Banks', label: 'Bancos', icon: 'briefcase' },
   { route: 'Family', label: 'Família', icon: 'users' },
